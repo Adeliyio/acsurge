@@ -192,6 +192,177 @@ class ApiService {
   async cancelSubscription() {
     return this.client.post('/subscriptions/cancel');
   }
+
+  // === NEW AI-POWERED TOOLS ===
+  
+  // 1. Platform Compliance Checker
+  async checkCompliance(data) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      // Check user quota
+      const quota = await dataService.checkUserQuota(user.id);
+      if (!quota.canAnalyze) {
+        throw new Error(`Analysis limit reached. ${quota.remaining || 0} analyses remaining.`);
+      }
+      
+      return this.client.post('/tools/compliance-checker', {
+        ...data,
+        user_id: user.id
+      });
+    } catch (error) {
+      console.error('Error in checkCompliance:', error);
+      throw error;
+    }
+  }
+  
+  // 2. ROI-Driven Copy Generator
+  async generateROICopy(data) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      const quota = await dataService.checkUserQuota(user.id);
+      if (!quota.canAnalyze) {
+        throw new Error(`Generation limit reached. ${quota.remaining || 0} generations remaining.`);
+      }
+      
+      return this.client.post('/tools/roi-generator', {
+        ...data,
+        user_id: user.id
+      });
+    } catch (error) {
+      console.error('Error in generateROICopy:', error);
+      throw error;
+    }
+  }
+  
+  // 3. A/B Test Generator
+  async generateABTests(data) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      const quota = await dataService.checkUserQuota(user.id);
+      if (!quota.canAnalyze) {
+        throw new Error(`Generation limit reached. ${quota.remaining || 0} generations remaining.`);
+      }
+      
+      return this.client.post('/tools/ab-test-generator', {
+        ...data,
+        user_id: user.id
+      });
+    } catch (error) {
+      console.error('Error in generateABTests:', error);
+      throw error;
+    }
+  }
+  
+  // 4. Industry-Specific Optimizer
+  async optimizeForIndustry(data) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      const quota = await dataService.checkUserQuota(user.id);
+      if (!quota.canAnalyze) {
+        throw new Error(`Optimization limit reached. ${quota.remaining || 0} optimizations remaining.`);
+      }
+      
+      return this.client.post('/tools/industry-optimizer', {
+        ...data,
+        user_id: user.id
+      });
+    } catch (error) {
+      console.error('Error in optimizeForIndustry:', error);
+      throw error;
+    }
+  }
+  
+  // 5. Performance Forensics Tool
+  async analyzePerformance(data) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      const quota = await dataService.checkUserQuota(user.id);
+      if (!quota.canAnalyze) {
+        throw new Error(`Analysis limit reached. ${quota.remaining || 0} analyses remaining.`);
+      }
+      
+      return this.client.post('/tools/performance-forensics', {
+        ...data,
+        user_id: user.id
+      });
+    } catch (error) {
+      console.error('Error in analyzePerformance:', error);
+      throw error;
+    }
+  }
+  
+  // 6. Psychology Scorer
+  async scorePsychology(data) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      const quota = await dataService.checkUserQuota(user.id);
+      if (!quota.canAnalyze) {
+        throw new Error(`Analysis limit reached. ${quota.remaining || 0} analyses remaining.`);
+      }
+      
+      return this.client.post('/tools/psychology-scorer', {
+        ...data,
+        user_id: user.id
+      });
+    } catch (error) {
+      console.error('Error in scorePsychology:', error);
+      throw error;
+    }
+  }
+  
+  // 7. Brand Voice Engine
+  async alignBrandVoice(data) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      const quota = await dataService.checkUserQuota(user.id);
+      if (!quota.canAnalyze) {
+        throw new Error(`Analysis limit reached. ${quota.remaining || 0} analyses remaining.`);
+      }
+      
+      return this.client.post('/tools/brand-voice-engine', {
+        ...data,
+        user_id: user.id
+      });
+    } catch (error) {
+      console.error('Error in alignBrandVoice:', error);
+      throw error;
+    }
+  }
+  
+  // 8. Legal Risk Scanner
+  async scanLegalRisks(data) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      const quota = await dataService.checkUserQuota(user.id);
+      if (!quota.canAnalyze) {
+        throw new Error(`Analysis limit reached. ${quota.remaining || 0} analyses remaining.`);
+      }
+      
+      return this.client.post('/tools/legal-risk-scanner', {
+        ...data,
+        user_id: user.id
+      });
+    } catch (error) {
+      console.error('Error in scanLegalRisks:', error);
+      throw error;
+    }
+  }
 }
 
 const apiService = new ApiService();

@@ -20,6 +20,16 @@ import Pricing from './pages/Pricing';
 import Profile from './pages/Profile';
 import LandingPage from './pages/LandingPage';
 
+// New AI-Powered Tools
+import ComplianceChecker from './pages/ComplianceChecker';
+import ROICopyGenerator from './pages/ROICopyGenerator';
+import ABTestGenerator from './pages/ABTestGenerator';
+import IndustryOptimizer from './pages/IndustryOptimizer';
+import PerformanceForensics from './pages/PerformanceForensics';
+import PsychologyScorer from './pages/PsychologyScorer';
+import BrandVoiceEngine from './pages/BrandVoiceEngine';
+import LegalRiskScanner from './pages/LegalRiskScanner';
+
 // Services
 import { AuthProvider, useAuth } from './services/authContext';
 
@@ -405,6 +415,55 @@ function App() {
                 <Route path="/profile" element={
                   <ProtectedRoute>
                     <Profile />
+                  </ProtectedRoute>
+                } />
+                
+                {/* New AI-Powered Tools */}
+                <Route path="/compliance-checker" element={
+                  <ProtectedRoute>
+                    <ComplianceChecker />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/roi-generator" element={
+                  <ProtectedRoute>
+                    <ROICopyGenerator />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/ab-test-generator" element={
+                  <ProtectedRoute>
+                    <ABTestGenerator />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/industry-optimizer" element={
+                  <ProtectedRoute>
+                    <IndustryOptimizer />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/performance-forensics" element={
+                  <ProtectedRoute>
+                    <PerformanceForensics />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/psychology-scorer" element={
+                  <ProtectedRoute>
+                    <PsychologyScorer />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/brand-voice-engine" element={
+                  <ProtectedRoute>
+                    <BrandVoiceEngine />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/legal-risk-scanner" element={
+                  <ProtectedRoute>
+                    <LegalRiskScanner />
                   </ProtectedRoute>
                 } />
                 

@@ -38,7 +38,16 @@ import {
   TrendingUp,
   Compare,
   Folder,
-  Star
+  Star,
+  // New icons for expanded tools
+  Policy as ComplianceIcon,
+  AttachMoney as ROIIcon,
+  Science as ABTestIcon,
+  Business as IndustryIcon,
+  SearchOff as ForensicsIcon,
+  Psychology as PsychologyIcon,
+  RecordVoiceOver as BrandVoiceIcon,
+  Gavel as LegalIcon
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
@@ -71,6 +80,68 @@ const navigationSections = [
         path: '/history',
         icon: HistoryIcon,
         badge: null
+      }
+    ]
+  },
+  {
+    id: 'ai-tools',
+    label: 'AI-Powered Tools',
+    items: [
+      {
+        id: 'compliance-checker',
+        label: 'Compliance Checker',
+        path: '/compliance-checker',
+        icon: ComplianceIcon,
+        badge: 'New'
+      },
+      {
+        id: 'roi-generator',
+        label: 'ROI Copy Generator',
+        path: '/roi-generator',
+        icon: ROIIcon,
+        badge: 'New'
+      },
+      {
+        id: 'ab-test-generator',
+        label: 'A/B Test Generator',
+        path: '/ab-test-generator',
+        icon: ABTestIcon,
+        badge: 'New'
+      },
+      {
+        id: 'industry-optimizer',
+        label: 'Industry Optimizer',
+        path: '/industry-optimizer',
+        icon: IndustryIcon,
+        badge: 'New'
+      },
+      {
+        id: 'performance-forensics',
+        label: 'Performance Forensics',
+        path: '/performance-forensics',
+        icon: ForensicsIcon,
+        badge: 'New'
+      },
+      {
+        id: 'psychology-scorer',
+        label: 'Psychology Scorer',
+        path: '/psychology-scorer',
+        icon: PsychologyIcon,
+        badge: 'New'
+      },
+      {
+        id: 'brand-voice-engine',
+        label: 'Brand Voice Engine',
+        path: '/brand-voice-engine',
+        icon: BrandVoiceIcon,
+        badge: 'New'
+      },
+      {
+        id: 'legal-risk-scanner',
+        label: 'Legal Risk Scanner',
+        path: '/legal-risk-scanner',
+        icon: LegalIcon,
+        badge: 'New'
       }
     ]
   },
