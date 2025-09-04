@@ -1,19 +1,24 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { Box, useMediaQuery, CircularProgress, Typography } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
 
 // Components
 import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import AdAnalysis from './pages/AdAnalysis';
 import AnalysisResults from './pages/AnalysisResults';
+import AnalysisHistory from './pages/AnalysisHistory';
+import Reports from './pages/Reports';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Pricing from './pages/Pricing';
 import Profile from './pages/Profile';
+import LandingPage from './pages/LandingPage';
 
 // Services
 import { AuthProvider, useAuth } from './services/authContext';
@@ -22,21 +27,335 @@ const theme = createTheme({
   palette: {
     primary: {
       main: '#2563eb',
+      light: '#3b82f6',
+      dark: '#1e40af',
+      contrastText: '#ffffff',
     },
     secondary: {
       main: '#7c3aed',
+      light: '#8b5cf6',
+      dark: '#6d28d9',
+      contrastText: '#ffffff',
     },
+    // New accent color for highlights and CTAs
+    warning: {
+      main: '#f59e0b',
+      light: '#fbbf24',
+      dark: '#d97706',
+      contrastText: '#ffffff',
+    },
+    success: {
+      main: '#10b981',
+      light: '#34d399',
+      dark: '#059669',
+      contrastText: '#ffffff',
+    },
+    error: {
+      main: '#ef4444',
+      light: '#f87171',
+      dark: '#dc2626',
+      contrastText: '#ffffff',
+    },
+    background: {
+      default: '#f9fafb',
+      paper: '#ffffff',
+    },
+    text: {
+      primary: '#1f2937',
+      secondary: '#6b7280',
+    },
+    grey: {
+      50: '#f9fafb',
+      100: '#f3f4f6',
+      200: '#e5e7eb',
+      300: '#d1d5db',
+      400: '#9ca3af',
+      500: '#6b7280',
+      600: '#4b5563',
+      700: '#374151',
+      800: '#1f2937',
+      900: '#111827',
+    },
+    divider: '#e5e7eb',
   },
   typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Inter", "SF Pro Display", "-apple-system", "BlinkMacSystemFont", "Roboto", "Helvetica", "Arial", sans-serif',
+    h1: {
+      fontWeight: 800,
+      fontSize: '2.5rem',
+      lineHeight: 1.2,
+      letterSpacing: '-0.02em',
+    },
+    h2: {
+      fontWeight: 700,
+      fontSize: '2rem',
+      lineHeight: 1.3,
+      letterSpacing: '-0.01em',
+    },
+    h3: {
+      fontWeight: 700,
+      fontSize: '1.5rem',
+      lineHeight: 1.4,
+    },
+    h4: {
+      fontWeight: 700,
+      fontSize: '1.25rem',
+      lineHeight: 1.4,
+    },
+    h5: {
+      fontWeight: 600,
+      fontSize: '1.125rem',
+      lineHeight: 1.5,
+    },
+    h6: {
+      fontWeight: 600,
+      fontSize: '1rem',
+      lineHeight: 1.5,
+    },
+    subtitle1: {
+      fontWeight: 500,
+      fontSize: '1rem',
+      lineHeight: 1.6,
+    },
+    subtitle2: {
+      fontWeight: 500,
+      fontSize: '0.875rem',
+      lineHeight: 1.6,
+    },
+    body1: {
+      fontWeight: 400,
+      fontSize: '1rem',
+      lineHeight: 1.6,
+    },
+    body2: {
+      fontWeight: 400,
+      fontSize: '0.875rem',
+      lineHeight: 1.6,
+    },
+    button: {
+      fontWeight: 600,
+      textTransform: 'none',
+      letterSpacing: '0.02em',
+    },
+    caption: {
+      fontWeight: 400,
+      fontSize: '0.75rem',
+      lineHeight: 1.5,
+    },
+  },
+  spacing: 8, // Base spacing unit (8px)
+  shadows: [
+    'none',
+    '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+    '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+    '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+    '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+    '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+    '0 25px 50px -12px rgb(0 0 0 / 0.25)',
+  ],
+  components: {
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: 16,
+          border: '1px solid',
+          borderColor: 'rgba(229, 231, 235, 0.8)',
+          boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
+          transition: 'all 0.2s ease-in-out',
+          padding: '16px', // Consistent padding
+          background: 'linear-gradient(145deg, #ffffff 0%, #fafafa 100%)',
+          '&:hover': {
+            boxShadow: '0 8px 25px rgba(37, 99, 235, 0.15)',
+            transform: 'translateY(-2px)',
+          },
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 16,
+          backgroundImage: 'none',
+        },
+        elevation1: {
+          boxShadow: '0 3px 12px rgba(0,0,0,0.08)',
+        },
+        elevation2: {
+          boxShadow: '0 8px 25px rgba(37, 99, 235, 0.15)',
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          textTransform: 'none',
+          fontWeight: 600,
+          fontSize: '0.875rem',
+          padding: '10px 20px',
+          boxShadow: 'none',
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+            transform: 'translateY(-1px)',
+          },
+        },
+        contained: {
+          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+        },
+        containedPrimary: {
+          background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+          '&:hover': {
+            background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 100%)',
+          },
+        },
+        large: {
+          padding: '14px 28px',
+          fontSize: '1rem',
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 12,
+            transition: 'all 0.2s ease-in-out',
+            '&:hover .MuiOutlinedInput-notchedOutline': {
+              borderColor: '#2563eb',
+            },
+            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+              borderWidth: 2,
+              borderColor: '#2563eb',
+            },
+          },
+          '& .MuiInputLabel-root': {
+            fontWeight: 500,
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          fontWeight: 500,
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+        },
+      },
+    },
   },
 });
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }) {
+  const { isAuthenticated, loading } = useAuth();
+  
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <Box 
+        display="flex" 
+        justifyContent="center" 
+        alignItems="center" 
+        minHeight="100vh"
+        sx={{ bgcolor: 'background.default' }}
+      >
+        <Box textAlign="center">
+          <CircularProgress size={48} sx={{ mb: 2 }} />
+          <Typography variant="h6" color="text.secondary">
+            Checking authentication...
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+  
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+}
+
+function AppLayout({ children }) {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  const location = useLocation();
+  const theme = createTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const isAuthPage = ['/login', '/register'].includes(location.pathname);
+  const isLandingPage = location.pathname === '/';
+  const showSidebar = isAuthenticated && !isAuthPage && !isLandingPage;
+  const showNavbar = !isLandingPage;
+
+  const handleSidebarToggle = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      {/* Sidebar */}
+      {showSidebar && (
+        <Sidebar
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          variant={isMobile ? 'temporary' : 'permanent'}
+        />
+      )}
+      
+      {/* Main Content */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100vh',
+          bgcolor: 'background.default',
+        }}
+      >
+        {/* Top Navbar */}
+        {showNavbar && (
+          <Navbar onSidebarToggle={handleSidebarToggle} showSidebarToggle={showSidebar && isMobile} />
+        )}
+        
+        {/* Page Content */}
+        <Box
+          sx={{
+            flexGrow: 1,
+            pt: isAuthPage || isLandingPage ? 0 : 2,
+            pb: 3,
+            overflow: 'auto',
+          }}
+        >
+          {children}
+        </Box>
+      </Box>
+    </Box>
+  );
 }
 
 function App() {
@@ -46,43 +365,53 @@ function App() {
         <CssBaseline />
         <AuthProvider>
           <Router>
-            <div className="App">
-              <Navbar />
-              <main style={{ marginTop: '64px', minHeight: 'calc(100vh - 64px)' }}>
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/pricing" element={<Pricing />} />
-                  
-                  <Route path="/dashboard" element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
-                  } />
-                  
-                  <Route path="/analyze" element={
-                    <ProtectedRoute>
-                      <AdAnalysis />
-                    </ProtectedRoute>
-                  } />
-                  
-                  <Route path="/results/:analysisId" element={
-                    <ProtectedRoute>
-                      <AnalysisResults />
-                    </ProtectedRoute>
-                  } />
-                  
-                  <Route path="/profile" element={
-                    <ProtectedRoute>
-                      <Profile />
-                    </ProtectedRoute>
-                  } />
-                  
-                  <Route path="/" element={<Navigate to="/dashboard" />} />
-                </Routes>
-              </main>
+            <AppLayout>
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/pricing" element={<Pricing />} />
+                
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/analyze" element={
+                  <ProtectedRoute>
+                    <AdAnalysis />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/results/:analysisId" element={
+                  <ProtectedRoute>
+                    <AnalysisResults />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/history" element={
+                  <ProtectedRoute>
+                    <AnalysisHistory />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/reports" element={
+                  <ProtectedRoute>
+                    <Reports />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/app" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
               <Toaster position="top-right" />
-            </div>
+            </AppLayout>
           </Router>
         </AuthProvider>
       </ThemeProvider>

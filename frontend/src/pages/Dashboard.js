@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Grid,
@@ -9,249 +9,284 @@ import {
   CardContent,
   Box,
   Chip,
-  List,
-  ListItem,
-  ListItemText,
+  LinearProgress
 } from '@mui/material';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  TrendingUp,
+  Assessment,
+  Speed,
+  Analytics,
+  Add,
+  CheckCircle
+} from '@mui/icons-material';
+import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
-import apiService from '../services/apiService';
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [analytics, setAnalytics] = useState(null);
-  const [recentAnalyses, setRecentAnalyses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { user, subscription } = useAuth();
+  const [isLoading] = useState(false);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
-    try {
-      const [analyticsData, historyData] = await Promise.all([
-        apiService.getDashboardAnalytics(),
-        apiService.getAnalysisHistory(5, 0)
-      ]);
-      
-      setAnalytics(analyticsData);
-      setRecentAnalyses(historyData);
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
+  // Simple static data for now - we'll make it dynamic later
+  const dashboardData = {
+    total_analyses: 0,
+    monthly_analyses: 0,
+    avg_score: 0,
+    avg_score_improvement: '0%'
   };
 
-  const getSubscriptionColor = (tier) => {
-    switch (tier) {
-      case 'pro': return 'success';
-      case 'basic': return 'primary';
-      default: return 'default';
-    }
-  };
-
-  const getScoreColor = (score) => {
-    if (score >= 80) return 'success';
-    if (score >= 60) return 'warning';
-    return 'error';
-  };
-
-  if (loading) {
-    return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Typography>Loading...</Typography>
-      </Container>
-    );
-  }
+  const MetricCard = ({ title, value, subtitle, icon: Icon, color = 'primary', chipLabel }) => (
+    <Card sx={{ height: '100%', position: 'relative' }}>
+      <CardContent>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+          <Box>
+            <Typography variant="h4" fontWeight={700} color={`${color}.main`}>
+              {value}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              {subtitle}
+            </Typography>
+          </Box>
+          <Box display="flex" flexDirection="column" alignItems="flex-end">
+            <Icon sx={{ fontSize: 32, color: `${color}.main`, mb: 1 }} />
+            {chipLabel && (
+              <Chip 
+                label={chipLabel} 
+                size="small" 
+                color={color}
+                variant="outlined"
+              />
+            )}
+          </Box>
+        </Box>
+        
+        <Typography variant="h6" fontWeight={600} gutterBottom>
+          {title}
+        </Typography>
+        
+        {isLoading && <LinearProgress sx={{ mt: 2 }} />}
+      </CardContent>
+    </Card>
+  );
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 3 }}>
       <Grid container spacing={3}>
         {/* Welcome Header */}
         <Grid item xs={12}>
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center">
-              <Box>
-                <Typography variant="h4" gutterBottom>
-                  Welcome back, {user?.full_name}!
-                </Typography>
-                <Typography variant="subtitle1" color="textSecondary">
-                  Analyze your ad copy and boost performance with AI insights
-                </Typography>
-              </Box>
-              <Box>
-                <Chip 
-                  label={`${user?.subscription_tier?.toUpperCase()} Plan`}
-                  color={getSubscriptionColor(user?.subscription_tier)}
-                  sx={{ mr: 2 }}
-                />
-                <Button
-                  variant="contained"
-                  component={RouterLink}
-                  to="/analyze"
-                  size="large"
-                >
-                  Analyze New Ad
-                </Button>
-              </Box>
-            </Box>
-          </Paper>
-        </Grid>
-
-        {/* Usage Stats */}
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Monthly Usage
-              </Typography>
-              <Typography variant="h3" color="primary">
-                {user?.monthly_analyses || 0}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                analyses this month
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Average Score
-              </Typography>
-              <Typography variant="h3" color="primary">
-                {analytics?.avg_score_improvement || 'N/A'}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                improvement over time
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Total Analyses
-              </Typography>
-              <Typography variant="h3" color="primary">
-                {analytics?.total_analyses || 0}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                lifetime analyses
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Recent Analyses */}
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6">
-                Recent Analyses
-              </Typography>
-              <Button component={RouterLink} to="/analyze">
-                View All
-              </Button>
-            </Box>
-            
-            {recentAnalyses.length > 0 ? (
-              <List>
-                {recentAnalyses.map((analysis) => (
-                  <ListItem 
-                    key={analysis.id}
-                    sx={{ 
-                      cursor: 'pointer',
-                      '&:hover': { backgroundColor: 'action.hover' }
-                    }}
-                    onClick={() => navigate(`/results/${analysis.id}`)}
-                  >
-                    <ListItemText
-                      primary={analysis.headline}
-                      secondary={
-                        <Box display="flex" justifyContent="space-between">
-                          <span>{analysis.platform} • {new Date(analysis.created_at).toLocaleDateString()}</span>
-                          <Chip 
-                            label={`Score: ${analysis.overall_score}`}
-                            color={getScoreColor(analysis.overall_score)}
-                            size="small"
-                          />
-                        </Box>
-                      }
+          <Paper 
+            elevation={0}
+            sx={{ 
+              p: 4, 
+              mb: 3, 
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              borderRadius: 3
+            }}
+          >
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                  <Typography variant="h3" fontWeight={800} gutterBottom>
+                    Welcome back, {subscription?.full_name || user?.email?.split('@')[0] || 'User'}! 👋
+                  </Typography>
+                  <Typography variant="h6" sx={{ opacity: 0.9, mb: 3 }}>
+                    Transform your ad copy with AI-powered insights and boost performance across all platforms
+                  </Typography>
+                  <Box display="flex" gap={2} alignItems="center">
+                    <Chip 
+                      label={`${(subscription?.subscription_tier || 'free')?.toUpperCase()} Plan`}
+                      sx={{ 
+                        bgcolor: 'rgba(255,255,255,0.2)', 
+                        color: 'white',
+                        fontWeight: 'bold'
+                      }}
                     />
-                  </ListItem>
-                ))}
-              </List>
-            ) : (
-              <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>
-                No analyses yet. Start by analyzing your first ad!
-              </Typography>
-            )}
-          </Paper>
+                    <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                      {dashboardData.monthly_analyses} analyses this month
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box>
+                  <Button
+                    variant="contained"
+                    component={RouterLink}
+                    to="/analyze"
+                    size="large"
+                    startIcon={<Add />}
+                    sx={{ 
+                      bgcolor: 'rgba(245, 158, 11, 0.95)',
+                      color: 'white',
+                      fontSize: '1.1rem',
+                      fontWeight: 700,
+                      px: 4,
+                      py: 1.5,
+                      borderRadius: 3,
+                      '&:hover': {
+                        bgcolor: 'rgba(245, 158, 11, 1)',
+                        transform: 'translateY(-2px)'
+                      }
+                    }}
+                  >
+                    ✨ Analyze New Ad
+                  </Button>
+                </Box>
+              </Box>
+            </Paper>
         </Grid>
 
-        {/* Quick Actions */}
+        {/* Monthly Usage Metric */}
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Quick Actions
+          <MetricCard
+            title="Monthly Usage"
+            value={dashboardData.monthly_analyses}
+            subtitle="analyses this month"
+            icon={Analytics}
+            color="primary"
+            chipLabel="This Month"
+          />
+        </Grid>
+
+        {/* Performance Score Metric */}
+        <Grid item xs={12} md={4}>
+          <MetricCard
+            title="Performance Score"
+            value={dashboardData.avg_score_improvement}
+            subtitle="average score improvement"
+            icon={Speed}
+            color="warning"
+            chipLabel="Avg Score"
+          />
+        </Grid>
+
+        {/* Total Analyses Metric */}
+        <Grid item xs={12} md={4}>
+          <MetricCard
+            title="Total Analyses"
+            value={dashboardData.total_analyses}
+            subtitle="lifetime analyses completed"
+            icon={Assessment}
+            color="success"
+            chipLabel="All Time"
+          />
+        </Grid>
+
+        {/* Getting Started Section */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 4, mt: 2 }}>
+            <Typography variant="h5" fontWeight={600} gutterBottom>
+              🚀 Getting Started with AdCopySurge
             </Typography>
-            <Box display="flex" flexDirection="column" gap={2}>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Ready to optimize your ad copy? Here's how to get the most out of AdCopySurge:
+            </Typography>
+            
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={4}>
+                <Box display="flex" alignItems="flex-start" gap={2}>
+                  <CheckCircle color="success" />
+                  <Box>
+                    <Typography variant="h6" fontWeight={600}>
+                      1. Analyze Your First Ad
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Start by analyzing your existing ad copy to get performance insights and improvement suggestions.
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <Box display="flex" alignItems="flex-start" gap={2}>
+                  <TrendingUp color="primary" />
+                  <Box>
+                    <Typography variant="h6" fontWeight={600}>
+                      2. Review Performance Scores
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Get detailed scores on clarity, persuasion, emotion, CTA strength, and platform optimization.
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <Box display="flex" alignItems="flex-start" gap={2}>
+                  <Speed color="warning" />
+                  <Box>
+                    <Typography variant="h6" fontWeight={600}>
+                      3. Implement Improvements
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Use our AI-generated alternatives and suggestions to create high-converting ad copy.
+                    </Typography>
+                  </Box>
+                </Box>
+              </Grid>
+            </Grid>
+
+            <Box display="flex" gap={2} mt={4}>
               <Button
-                variant="outlined"
+                variant="contained"
                 component={RouterLink}
                 to="/analyze"
-                fullWidth
+                startIcon={<Add />}
+                size="large"
               >
-                New Analysis
+                Start Your First Analysis
               </Button>
               <Button
                 variant="outlined"
                 component={RouterLink}
                 to="/pricing"
-                fullWidth
+                size="large"
               >
-                Upgrade Plan
-              </Button>
-              <Button
-                variant="outlined"
-                component={RouterLink}
-                to="/profile"
-                fullWidth
-              >
-                Account Settings
+                View Pricing Plans
               </Button>
             </Box>
           </Paper>
         </Grid>
 
-        {/* Performance Chart */}
-        {analytics?.monthly_usage && (
-          <Grid item xs={12}>
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Monthly Performance
-              </Typography>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={analytics.monthly_usage}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="analyses" fill="#2563eb" />
-                  <Bar dataKey="avg_score" fill="#7c3aed" />
-                </BarChart>
-              </ResponsiveContainer>
-            </Paper>
-          </Grid>
-        )}
+        {/* Quick Stats */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3 }}>
+            <Typography variant="h6" fontWeight={600} gutterBottom>
+              📊 Account Overview
+            </Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={6} md={3}>
+                <Typography variant="h4" color="primary.main" fontWeight={700}>
+                  {subscription?.subscription_tier?.toUpperCase() || 'FREE'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Current Plan
+                </Typography>
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <Typography variant="h4" color="success.main" fontWeight={700}>
+                  {dashboardData.total_analyses}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Total Analyses
+                </Typography>
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <Typography variant="h4" color="warning.main" fontWeight={700}>
+                  {dashboardData.monthly_analyses}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  This Month
+                </Typography>
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <Typography variant="h4" color="info.main" fontWeight={700}>
+                  {user ? 'Active' : 'Inactive'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Account Status
+                </Typography>
+              </Grid>
+            </Grid>
+          </Paper>
+        </Grid>
       </Grid>
     </Container>
   );

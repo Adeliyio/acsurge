@@ -2,15 +2,16 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 from app.models.user import User, SubscriptionTier
 from app.core.config import settings
-import stripe
+# import stripe  # Temporarily disabled for MVP
 
 class SubscriptionService:
     """Handles subscription management and payments"""
     
     def __init__(self, db: Session):
         self.db = db
-        if settings.STRIPE_SECRET_KEY:
-            stripe.api_key = settings.STRIPE_SECRET_KEY
+        # Temporarily disabled for MVP - will add payment processing back
+        # if settings.STRIPE_SECRET_KEY:
+        #     stripe.api_key = settings.STRIPE_SECRET_KEY
     
     def get_user_subscription(self, user_id: int) -> Dict[str, Any]:
         """Get user's current subscription details"""

@@ -1,4 +1,5 @@
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import List, Optional
 import os
 
@@ -6,7 +7,7 @@ class Settings(BaseSettings):
     # App settings
     APP_NAME: str = "AdCopySurge"
     VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = Field(default=True)  # Change to False in production
     HOST: str = "127.0.0.1"
     PORT: int = 8000
     
@@ -39,9 +40,29 @@ class Settings(BaseSettings):
     BASIC_PLAN_PRICE: int = 49  # $49/month
     PRO_PLAN_PRICE: int = 99    # $99/month
     
-    # Stripe
+    # Stripe (Legacy - will be removed after Paddle migration)
     STRIPE_PUBLISHABLE_KEY: Optional[str] = None
     STRIPE_SECRET_KEY: Optional[str] = None
+    STRIPE_WEBHOOK_SECRET: Optional[str] = None
+    
+    # Paddle Billing
+    PADDLE_VENDOR_ID: Optional[str] = None
+    PADDLE_AUTH_CODE: Optional[str] = None  # API Auth Code
+    PADDLE_PUBLIC_KEY: Optional[str] = None  # For webhook signature verification
+    PADDLE_ENVIRONMENT: str = "sandbox"  # sandbox or live
+    PADDLE_API_URL: str = "https://sandbox-vendors.paddle.com/api"  # Will change to live URL in production
+    
+    # Environment
+    NODE_ENV: str = "development"
+    
+    # Monitoring & Logging
+    SENTRY_DSN: Optional[str] = None
+    LOG_LEVEL: str = "info"
+    
+    # Feature Flags
+    ENABLE_ANALYTICS: bool = True
+    ENABLE_COMPETITOR_ANALYSIS: bool = True
+    ENABLE_PDF_REPORTS: bool = True
     
     class Config:
         env_file = ".env"

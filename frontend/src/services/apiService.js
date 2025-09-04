@@ -1,21 +1,28 @@
 import axios from 'axios';
+import { supabase } from '../lib/supabaseClient';
+import dataService from './dataService';
 
 class ApiService {
   constructor() {
     this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
     this.client = axios.create({
       baseURL: this.baseURL,
-      timeout: 10000,
+      timeout: 30000, // Increased timeout for AI processing
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
-    // Request interceptor to add auth token
+    // Request interceptor to add Supabase auth token
     this.client.interceptors.request.use(
-      (config) => {
-        if (this.authToken) {
-          config.headers.Authorization = `Bearer ${this.authToken}`;
+      async (config) => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            config.headers.Authorization = `Bearer ${session.access_token}`;
+          }
+        } catch (error) {
+          console.error('Error getting auth session:', error);
         }
         return config;
       },
@@ -27,7 +34,8 @@ class ApiService {
       (response) => response.data,
       (error) => {
         if (error.response?.status === 401) {
-          this.clearAuthToken();
+          // Token expired or invalid - redirect to login
+          supabase.auth.signOut();
           window.location.href = '/login';
         }
         return Promise.reject(error);
@@ -64,17 +72,85 @@ class ApiService {
     return this.client.get('/auth/me');
   }
 
-  // Ad analysis endpoints
+  // Ad analysis endpoints with integrated Supabase + AI processing
   async analyzeAd(adData) {
-    return this.client.post('/ads/analyze', adData);
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Check user quota before proceeding
+      const quota = await dataService.checkUserQuota(user.id);
+      if (!quota.canAnalyze) {
+        throw new Error(`Analysis limit reached. ${quota.remaining || 0} analyses remaining this month.`);
+      }
+
+      // Create analysis record in Supabase first
+      const analysis = await dataService.createAnalysis(user.id, adData.ad);
+      
+      // Add competitor benchmarks if provided
+      if (adData.competitor_ads && adData.competitor_ads.length > 0) {
+        await dataService.addCompetitorBenchmarks(analysis.id, adData.competitor_ads);
+      }
+
+      // Send to backend for AI processing
+      const aiRequest = {
+        analysis_id: analysis.id,
+        ad: adData.ad,
+        competitor_ads: adData.competitor_ads || [],
+        user_id: user.id
+      };
+
+      // Call backend AI service
+      const aiResponse = await this.client.post('/ads/analyze', aiRequest);
+      
+      // Update analysis with AI results
+      if (aiResponse.scores) {
+        await dataService.updateAnalysisScores(analysis.id, aiResponse.scores);
+      }
+      
+      // Add generated alternatives if provided
+      if (aiResponse.alternatives) {
+        await dataService.addGeneratedAlternatives(analysis.id, aiResponse.alternatives);
+      }
+
+      return {
+        analysis_id: analysis.id,
+        analysis,
+        scores: aiResponse.scores,
+        alternatives: aiResponse.alternatives,
+        feedback: aiResponse.feedback
+      };
+    } catch (error) {
+      console.error('Error in analyzeAd:', error);
+      throw error;
+    }
   }
 
   async getAnalysisHistory(limit = 10, offset = 0) {
-    return this.client.get(`/ads/history?limit=${limit}&offset=${offset}`);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      return await dataService.getAnalysesHistory(user.id, limit, offset);
+    } catch (error) {
+      console.error('Error fetching analysis history:', error);
+      throw error;
+    }
   }
 
   async getAnalysisDetail(analysisId) {
-    return this.client.get(`/ads/analysis/${analysisId}`);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      return await dataService.getAnalysisDetail(analysisId, user.id);
+    } catch (error) {
+      console.error('Error fetching analysis detail:', error);
+      throw error;
+    }
   }
 
   async generateAlternatives(adData) {
@@ -83,7 +159,15 @@ class ApiService {
 
   // Analytics endpoints
   async getDashboardAnalytics() {
-    return this.client.get('/analytics/dashboard');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      return await dataService.getDashboardAnalytics(user.id);
+    } catch (error) {
+      console.error('Error fetching dashboard analytics:', error);
+      throw error;
+    }
   }
 
   async exportAnalyticsPDF(analysisIds) {

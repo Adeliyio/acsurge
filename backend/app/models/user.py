@@ -21,7 +21,14 @@ class User(Base):
     subscription_tier = Column(Enum(SubscriptionTier), default=SubscriptionTier.FREE)
     monthly_analyses = Column(Integer, default=0)
     subscription_active = Column(Boolean, default=True)
+    
+    # Legacy Stripe fields (will be removed after migration)
     stripe_customer_id = Column(String, nullable=True)
+    
+    # Paddle billing fields
+    paddle_subscription_id = Column(String, nullable=True, index=True)
+    paddle_plan_id = Column(String, nullable=True)
+    paddle_checkout_id = Column(String, nullable=True)
     
     # Account status
     is_active = Column(Boolean, default=True)

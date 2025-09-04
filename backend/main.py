@@ -5,6 +5,11 @@ import uvicorn
 from app.api import auth, ads, analytics, subscriptions
 from app.core.config import settings
 from app.core.database import engine, Base
+from app.core.logging import setup_logging, get_logger
+
+# Setup logging
+setup_logging()
+logger = get_logger(__name__)
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
