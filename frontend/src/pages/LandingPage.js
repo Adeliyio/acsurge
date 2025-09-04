@@ -31,7 +31,15 @@ import {
   Timeline,
   Lightbulb,
   ArrowForward,
-  PlayArrow
+  PlayArrow,
+  // New icons for 9 tools
+  Policy as ComplianceIcon,
+  AttachMoney as ROIIcon,
+  Science as ABTestIcon,
+  Business as IndustryIcon,
+  SearchOff as ForensicsIcon,
+  RecordVoiceOver as BrandVoiceIcon,
+  Gavel as LegalIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
@@ -45,10 +53,10 @@ const LandingPage = () => {
   
   // Typing animation effect
   const phrases = [
-    "Transform weak ads into conversion machines",
-    "Boost your ROAS by up to 300%", 
-    "Beat your competitors with AI-powered copy",
-    "Turn browsers into buyers instantly"
+    "9 AI-powered tools to transform your marketing",
+    "From compliance checking to ROI optimization", 
+    "Psychology scoring to brand voice alignment",
+    "Complete ad copy intelligence suite"
   ];
   
   useEffect(() => {
@@ -87,11 +95,79 @@ const LandingPage = () => {
     }
   };
 
-  const features = [
+  // Complete suite of 9 AI-powered marketing tools
+  const toolsShowcase = [
+    {
+      icon: <Analytics color="primary" sx={{ fontSize: 40 }} />,
+      title: "Ad Copy Analyzer",
+      description: "Comprehensive analysis of your ad copy with detailed scoring and optimization recommendations",
+      badge: "Core Tool",
+      link: '/analyze'
+    },
+    {
+      icon: <ComplianceIcon color="primary" sx={{ fontSize: 40 }} />,
+      title: "Compliance Checker", 
+      description: "Scan for policy violations across Facebook, Google, TikTok and get compliant alternatives",
+      badge: "New",
+      link: '/compliance-checker'
+    },
+    {
+      icon: <ROIIcon color="primary" sx={{ fontSize: 40 }} />,
+      title: "ROI Copy Generator",
+      description: "Generate profit-optimized copy targeting high-value customers with premium positioning",
+      badge: "New",
+      link: '/roi-generator'
+    },
+    {
+      icon: <ABTestIcon color="primary" sx={{ fontSize: 40 }} />,
+      title: "A/B Test Generator",
+      description: "Create 5-10 variations testing different psychological angles, headlines, and CTAs",
+      badge: "New",
+      link: '/ab-test-generator'
+    },
+    {
+      icon: <IndustryIcon color="primary" sx={{ fontSize: 40 }} />,
+      title: "Industry Optimizer",
+      description: "Adapt copy to industry-specific language, pain points, and proven frameworks",
+      badge: "New",
+      link: '/industry-optimizer'
+    },
+    {
+      icon: <ForensicsIcon color="primary" sx={{ fontSize: 40 }} />,
+      title: "Performance Forensics",
+      description: "Analyze existing ads to understand why they're performing well or poorly",
+      badge: "New",
+      link: '/performance-forensics'
+    },
     {
       icon: <Psychology color="primary" sx={{ fontSize: 40 }} />,
-      title: "AI-Powered Analysis",
-      description: "Advanced NLP algorithms analyze your ad copy against 50+ conversion factors"
+      title: "Psychology Scorer",
+      description: "Score copy on 15+ psychological triggers including urgency, social proof, authority",
+      badge: "New",
+      link: '/psychology-scorer'
+    },
+    {
+      icon: <BrandVoiceIcon color="primary" sx={{ fontSize: 40 }} />,
+      title: "Brand Voice Engine",
+      description: "Ensure all generated copy matches your brand voice and tone consistency",
+      badge: "New",
+      link: '/brand-voice-engine'
+    },
+    {
+      icon: <LegalIcon color="primary" sx={{ fontSize: 40 }} />,
+      title: "Legal Risk Scanner",
+      description: "Identify problematic claims and get safer alternatives while maintaining impact",
+      badge: "New",
+      link: '/legal-risk-scanner'
+    }
+  ];
+  
+  // Updated features for overview section
+  const platformFeatures = [
+    {
+      icon: <AutoAwesome color="primary" sx={{ fontSize: 40 }} />,
+      title: "9 Specialized AI Tools",
+      description: "Complete marketing intelligence suite covering every aspect of ad copy optimization"
     },
     {
       icon: <CompareArrows color="primary" sx={{ fontSize: 40 }} />,
@@ -99,24 +175,9 @@ const LandingPage = () => {
       description: "See how your ads stack up against top-performing competitors in your industry"
     },
     {
-      icon: <AutoAwesome color="primary" sx={{ fontSize: 40 }} />,
-      title: "Instant Optimization",
-      description: "Get AI-generated alternatives that are proven to convert better"
-    },
-    {
-      icon: <Analytics color="primary" sx={{ fontSize: 40 }} />,
-      title: "Performance Scoring",
-      description: "Get detailed scores for clarity, persuasion, emotion, and CTA strength"
-    },
-    {
       icon: <Timeline color="primary" sx={{ fontSize: 40 }} />,
-      title: "Success Tracking",
-      description: "Track improvements and ROI across all your campaigns"
-    },
-    {
-      icon: <Lightbulb color="primary" sx={{ fontSize: 40 }} />,
-      title: "Industry Insights",
-      description: "Platform-specific recommendations for Facebook, Google, LinkedIn & more"
+      title: "Unified Dashboard",
+      description: "Access all tools from one interface with centralized reporting and analytics"
     }
   ];
 
@@ -127,7 +188,7 @@ const LandingPage = () => {
       company: "TechStart Inc",
       avatar: "/avatars/sarah.jpg",
       rating: 5,
-      text: "AdCopySurge increased our Facebook ad CTR by 240% in just 2 weeks. The AI suggestions are incredible!"
+      text: "Having 9 AI tools in one platform is game-changing. The compliance checker alone saved us from costly policy violations!"
     },
     {
       name: "Mike Rodriguez", 
@@ -135,7 +196,7 @@ const LandingPage = () => {
       company: "E-commerce Pro",
       avatar: "/avatars/mike.jpg", 
       rating: 5,
-      text: "I was spending $50k/month on ads with poor results. AdCopySurge helped me cut costs by 40% while doubling conversions."
+      text: "The ROI generator and psychology scorer combo increased our profit margins by 67%. Best marketing investment ever."
     },
     {
       name: "Jennifer Liu",
@@ -143,7 +204,7 @@ const LandingPage = () => {
       company: "Digital Growth Co",
       avatar: "/avatars/jennifer.jpg",
       rating: 5, 
-      text: "This tool pays for itself in the first campaign. My team now creates winning ads 10x faster."
+      text: "My agency now offers 9 different AI-powered services to clients. AdCopySurge 10x'd our service capabilities."
     }
   ];
 
@@ -154,7 +215,8 @@ const LandingPage = () => {
       period: 'forever',
       description: 'Perfect for testing the waters',
       features: [
-        '5 ad analyses per month',
+        'Access to all 9 AI tools',
+        '5 analyses per month per tool',
         'Basic scoring & feedback', 
         '3 AI-generated alternatives',
         'Email support'
@@ -169,9 +231,11 @@ const LandingPage = () => {
       period: 'month',
       description: 'For serious marketers',
       features: [
-        '100 ad analyses per month',
+        'Full access to all 9 AI tools',
+        '100 analyses per month per tool',
         'Advanced AI scoring',
-        'Unlimited alternatives',
+        'Unlimited alternatives & variations',
+        'Brand voice profiles',
         'Competitor benchmarking',
         'PDF reports',
         'Priority support'
@@ -186,11 +250,13 @@ const LandingPage = () => {
       period: 'month', 
       description: 'For agencies & teams',
       features: [
-        '500 ad analyses per month',
+        'Unlimited access to all 9 tools',
+        '500+ analyses per tool per month',
         'Premium AI models',
         'White-label reports',
         'API access',
         'Team collaboration',
+        'Custom brand voice training',
         'Custom integrations',
         'Dedicated support'
       ],
@@ -201,10 +267,10 @@ const LandingPage = () => {
   ];
 
   const stats = [
+    { number: "9", label: "AI-Powered Tools" },
     { number: "300%", label: "Average ROAS Increase" },
     { number: "10,000+", label: "Ads Analyzed" },
-    { number: "500+", label: "Happy Customers" },
-    { number: "2.5M+", label: "Ad Spend Optimized" }
+    { number: "500+", label: "Happy Customers" }
   ];
 
   return (
@@ -231,9 +297,9 @@ const LandingPage = () => {
                   lineHeight: 1.2
                 }}
               >
-                Turn Your Ads Into 
+                Complete AI Marketing 
                 <Box component="span" sx={{ color: '#FFD700', display: 'block' }}>
-                  Conversion Machines
+                  Intelligence Suite
                 </Box>
               </Typography>
               
@@ -262,8 +328,8 @@ const LandingPage = () => {
               </Typography>
 
               <Typography variant="h6" sx={{ mb: 4, color: 'rgba(255,255,255,0.8)' }}>
-                AI-powered ad copy analysis that reveals exactly why your ads aren't converting
-                and gives you proven alternatives that do.
+                9 specialized AI tools to analyze, optimize, and supercharge your ad campaigns.
+                From compliance checking to ROI optimization – everything you need in one platform.
               </Typography>
 
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 4 }}>
@@ -335,20 +401,20 @@ const LandingPage = () => {
                   }}
                 >
                   <Typography variant="h6" color="text.primary" sx={{ mb: 2 }}>
-                    🎯 Live Analysis Preview
+                    🎯 Multi-Tool Dashboard
                   </Typography>
                   <Box sx={{ textAlign: 'left', color: 'text.secondary' }}>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      📊 <strong>Overall Score:</strong> 78/100
+                      📊 <strong>Ad Analysis:</strong> 92/100 score
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      💡 <strong>Key Issues:</strong> Weak CTA, Low urgency
+                      🛡️ <strong>Compliance:</strong> All platforms clear
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      🚀 <strong>Improvement:</strong> +45% predicted CTR
+                      💰 <strong>ROI Potential:</strong> +67% profit increase
                     </Typography>
                     <Typography variant="body2">
-                      ⚡ <strong>Time to Fix:</strong> 2 minutes
+                      🧪 <strong>A/B Tests:</strong> 5 variations ready
                     </Typography>
                   </Box>
                 </Paper>
@@ -488,23 +554,108 @@ const LandingPage = () => {
         </Container>
       </Box>
 
-      {/* Features Section */}
+      {/* Tools Showcase Section */}
       <Box sx={{ py: 8, backgroundColor: 'background.paper' }}>
         <Container maxWidth="lg">
           <Box textAlign="center" sx={{ mb: 6 }}>
             <Typography variant="h3" sx={{ fontWeight: 700, mb: 2 }}>
-              Everything You Need to Create 
+              9 AI-Powered Tools,
               <Box component="span" sx={{ color: 'primary.main' }}>
-                {' '}Winning Ads
+                {' '}One Platform
               </Box>
             </Typography>
             <Typography variant="h6" color="text.secondary">
-              AI-powered analysis that gives you the insights top agencies charge $10k+ for
+              Complete marketing intelligence suite - from compliance checking to ROI optimization
             </Typography>
           </Box>
 
           <Grid container spacing={4}>
-            {features.map((feature, index) => (
+            {toolsShowcase.map((tool, index) => (
+              <Grid item xs={12} md={4} key={index}>
+                <Card
+                  elevation={2}
+                  sx={{
+                    height: '100%',
+                    transition: 'all 0.3s ease',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    '&:hover': {
+                      transform: 'translateY(-8px)',
+                      boxShadow: 8
+                    }
+                  }}
+                  onClick={() => {
+                    if (isAuthenticated) {
+                      navigate(tool.link);
+                    } else {
+                      navigate('/register');
+                    }
+                  }}
+                >
+                  {tool.badge && (
+                    <Chip
+                      label={tool.badge}
+                      color={tool.badge === 'Core Tool' ? 'primary' : 'secondary'}
+                      size="small"
+                      sx={{
+                        position: 'absolute',
+                        top: 16,
+                        right: 16,
+                        fontWeight: 600,
+                        fontSize: '0.7rem'
+                      }}
+                    />
+                  )}
+                  <CardContent sx={{ p: 4, textAlign: 'center' }}>
+                    <Box sx={{ mb: 2 }}>
+                      {tool.icon}
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+                      {tool.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      {tool.description}
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      sx={{ mt: 1 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isAuthenticated) {
+                          navigate(tool.link);
+                        } else {
+                          navigate('/register');
+                        }
+                      }}
+                    >
+                      Try Tool
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
+
+      {/* Platform Features Overview */}
+      <Box sx={{ py: 8, backgroundColor: 'background.default' }}>
+        <Container maxWidth="lg">
+          <Box textAlign="center" sx={{ mb: 6 }}>
+            <Typography variant="h3" sx={{ fontWeight: 700, mb: 2 }}>
+              Why Choose 
+              <Box component="span" sx={{ color: 'primary.main' }}>
+                AdCopySurge?
+              </Box>
+            </Typography>
+            <Typography variant="h6" color="text.secondary">
+              The most comprehensive AI marketing platform available
+            </Typography>
+          </Box>
+
+          <Grid container spacing={4}>
+            {platformFeatures.map((feature, index) => (
               <Grid item xs={12} md={4} key={index}>
                 <Card
                   elevation={2}
@@ -512,8 +663,8 @@ const LandingPage = () => {
                     height: '100%',
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      transform: 'translateY(-8px)',
-                      boxShadow: 8
+                      transform: 'translateY(-4px)',
+                      boxShadow: 6
                     }
                   }}
                 >
@@ -725,10 +876,10 @@ const LandingPage = () => {
       >
         <Container maxWidth="md">
           <Typography variant="h3" sx={{ fontWeight: 700, mb: 2 }}>
-            Ready to 3x Your Ad Performance?
+            Ready to Access All 9 AI Tools?
           </Typography>
           <Typography variant="h6" sx={{ mb: 4, color: 'rgba(255,255,255,0.9)' }}>
-            Join 500+ marketers who've already transformed their campaigns with AI
+            Join 500+ marketers using our complete AI marketing intelligence suite
           </Typography>
           
           <Button
@@ -751,7 +902,7 @@ const LandingPage = () => {
               transition: 'all 0.3s ease'
             }}
           >
-            Start Your Free Analysis Now
+            Try All 9 Tools Free Now
           </Button>
           
           <Typography variant="body2" sx={{ mt: 2, color: 'rgba(255,255,255,0.8)' }}>
