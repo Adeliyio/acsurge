@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -92,3 +93,38 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         subscription_tier=user.subscription_tier,
         is_active=user.is_active
     )
+
+
+# Dependency functions for authentication
+async def get_current_user_dep(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    """Get current user as dependency for other endpoints"""
+    auth_service = AuthService(db)
+    user = auth_service.get_current_user(token)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return user
+
+
+async def require_admin(current_user: User = Depends(get_current_user_dep)) -> User:
+    """Require admin role for blog management"""
+    # For now, we'll use email-based admin check
+    # In production, you'd want to add an is_admin field to the User model
+    admin_emails = [
+        "admin@adcopysurge.com",
+        "blog@adcopysurge.com",
+        # Add more admin emails as needed
+    ]
+    
+    if current_user.email not in admin_emails:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    return current_user

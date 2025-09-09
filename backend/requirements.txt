@@ -1,12 +1,12 @@
-# FastAPI and server
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
+# FastAPI and server (Production-ready versions)
+fastapi>=0.103.0,<0.120.0  # Latest stable with security updates
+uvicorn[standard]>=0.24.0,<0.30.0
+python-multipart>=0.0.6,<0.1.0
 
-# Database
-sqlalchemy==2.0.23
-alembic==1.13.0
-# psycopg2-binary==2.9.9  # Only for PostgreSQL - using SQLite for development
+# Database (SQLAlchemy 2.x with latest security patches)
+sqlalchemy>=2.0.23,<2.1.0
+alembic>=1.13.0,<1.15.0
+psycopg2-binary>=2.9.9,<3.0.0  # PostgreSQL driver
 
 # Authentication
 python-jose[cryptography]==3.3.0
@@ -26,7 +26,7 @@ httpx==0.25.2
 requests==2.31.0
 
 # Payment Processing
-paddle-billing==1.0.1
+# paddle-billing==1.0.1  # Package not available, disabled for now
 
 # Data processing
 pandas==2.1.4
@@ -40,17 +40,18 @@ weasyprint==60.1
 fastapi-mail==1.4.1
 
 # CORS
-fastapi-cors==0.0.6
+# fastapi-cors==0.0.6  # Use built-in FastAPI CORS middleware instead
 
-# Validation
-pydantic==2.5.0
-pydantic-settings==2.1.0
+# Validation (Pydantic V2 with settings)
+pydantic>=2.5.0,<3.0.0  # V2 with latest security updates
+pydantic-settings>=2.1.0,<3.0.0  # Required for BaseSettings
 
 # Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1
 
 # Monitoring and Logging
+psutil==5.9.6  # System monitoring for health checks
 prometheus-client==0.19.0
 sentry-sdk[fastapi]==1.40.0
 structlog==23.2.0
@@ -59,3 +60,11 @@ colorama==0.4.6
 # Background tasks
 celery==5.3.4
 redis==5.0.1
+
+# Blog system dependencies
+python-frontmatter==1.0.1
+markdown-it-py==3.0.0
+Pillow==10.1.0
+python-slugify==8.0.1
+markdown2==2.4.10
+pymdown-extensions==10.7
