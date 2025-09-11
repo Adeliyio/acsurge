@@ -26,7 +26,7 @@ pyasn1==0.6.1
 openai==1.57.2  # Updated for better compatibility
 transformers==4.56.1  # Latest version with Python 3.12 wheels
 tokenizers==0.22.0
-huggingface-hub==0.27.1  # Updated for compatibility
+huggingface-hub>=0.34.4,<1.0.0  # Compatible with transformers 4.56.1
 fsspec==2024.10.0  # Updated version
 textstat==0.7.10
 nltk==3.9.1

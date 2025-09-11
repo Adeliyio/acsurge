@@ -18,7 +18,7 @@ cython>=3.0.5  # If any packages require compilation
 # AI/ML packages with Python 3.12 wheels
 transformers>=4.35.0,<5.0.0  # Latest with Python 3.12 support
 tokenizers>=0.15.0,<1.0.0    # Compatible tokenizers version
-huggingface-hub>=0.19.0,<1.0.0
+huggingface-hub>=0.34.0,<1.0.0  # Compatible with transformers 4.56.1
 
 # Updated versions of other packages that might cause issues
 lxml>=5.0.0        # Python 3.12 compatible XML processing
