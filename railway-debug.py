@@ -21,8 +21,7 @@ def main():
     critical_vars = [
         "SECRET_KEY",
         "DATABASE_URL", 
-        "OPENAI_API_KEY",  # Your app expects this
-        "OPEN_AI_KEY",     # You might have this in Railway
+        "OPENAI_API_KEY",
         "REACT_APP_SUPABASE_URL",
         "REACT_APP_SUPABASE_ANON_KEY",
         "ENVIRONMENT",

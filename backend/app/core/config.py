@@ -63,14 +63,6 @@ class Settings(BaseSettings):
     
     # AI Services Configuration
     OPENAI_API_KEY: Optional[str] = Field(None, description="OpenAI API key")
-    
-    @validator('OPENAI_API_KEY', pre=True, always=True)
-    def get_openai_key(cls, v):
-        """Accept either OPENAI_API_KEY or OPEN_AI_KEY from environment"""
-        if v:
-            return v
-        # Fallback to OPEN_AI_KEY if OPENAI_API_KEY is not set
-        return os.environ.get('OPEN_AI_KEY')
     OPENAI_MAX_TOKENS: int = Field(default=2000, description="OpenAI max tokens per request")
     OPENAI_RATE_LIMIT: int = Field(default=100, description="OpenAI requests per minute")
     HUGGINGFACE_API_KEY: Optional[str] = Field(None, description="HuggingFace API key")
