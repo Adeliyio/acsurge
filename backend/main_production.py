@@ -4,6 +4,7 @@ import time
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from tenacity import retry, wait_fixed, stop_after_attempt
 
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,41 +25,77 @@ setup_logging()
 logger = get_logger(__name__)
 
 
+@retry(
+    wait=wait_fixed(3),
+    stop=stop_after_attempt(5),
+    reraise=True
+)
+def initialize_database():
+    """Initialize database with retry logic for Railway"""
+    try:
+        logger.info("Creating/verifying database tables...")
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created/verified successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+        # Test basic connection
+        try:
+            with engine.connect() as conn:
+                from sqlalchemy import text
+                result = conn.execute(text("SELECT version()"))
+                logger.info(f"Database connection test successful: {result.scalar()}")
+        except Exception as conn_e:
+            logger.error(f"Database connection test failed: {conn_e}")
+        raise
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Handle startup and shutdown events"""
+    """Handle startup and shutdown events with retry logic for Railway"""
     # Startup
     logger.info("Starting AdCopySurge API...")
     
+    startup_errors = []
+    
+    # Initialize database with retries
     try:
-        # Create database tables
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created/verified")
-        
-        # Download NLTK data if needed
-        try:
-            import nltk
-            nltk.download('punkt', quiet=True)
-            nltk.download('stopwords', quiet=True)
-            logger.info("NLTK data initialized")
-        except Exception as e:
-            logger.warning(f"NLTK data download failed: {e}")
-        
-        # Initialize Redis connection if configured
-        if settings.REDIS_URL and settings.REDIS_URL != "redis://localhost:6379":
-            try:
-                import redis
-                redis_client = redis.from_url(settings.REDIS_URL)
-                redis_client.ping()
-                logger.info("Redis connection verified")
-            except Exception as e:
-                logger.warning(f"Redis connection failed: {e}")
-        
-        logger.info("Application startup completed successfully")
-        
+        logger.info("Initializing database connection...")
+        initialize_database()
+        logger.info("Database initialization completed")
     except Exception as e:
-        logger.error(f"Startup failed: {e}")
+        error_msg = f"Critical: Database initialization failed after retries: {e}"
+        logger.error(error_msg)
+        startup_errors.append(error_msg)
+        # Database is critical - fail fast
         sys.exit(1)
+    
+    # Download NLTK data (non-critical)
+    try:
+        import nltk
+        nltk.download('punkt', quiet=True)
+        nltk.download('stopwords', quiet=True)
+        logger.info("NLTK data initialized")
+    except Exception as e:
+        logger.warning(f"NLTK data download failed (non-critical): {e}")
+        startup_errors.append(f"NLTK warning: {e}")
+    
+    # Initialize Redis connection if configured (non-critical)
+    if settings.REDIS_URL and settings.REDIS_URL != "redis://localhost:6379":
+        try:
+            import redis
+            redis_client = redis.from_url(settings.REDIS_URL)
+            redis_client.ping()
+            logger.info("Redis connection verified")
+        except Exception as e:
+            logger.warning(f"Redis connection failed (non-critical): {e}")
+            startup_errors.append(f"Redis warning: {e}")
+    
+    if startup_errors:
+        logger.warning(f"Startup completed with {len(startup_errors)} warnings")
+        for error in startup_errors:
+            logger.warning(f"  - {error}")
+    else:
+        logger.info("Application startup completed successfully")
     
     yield
     
@@ -149,10 +186,16 @@ async def kubernetes_health_check():
     
     # Check database
     try:
-        # Simple database check
+        # Simple database check with proper SQL syntax
+        from sqlalchemy import text
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
-        health_status["checks"]["database"] = "healthy"
+            result = conn.execute(text("SELECT 1 as test"))
+            test_value = result.scalar()
+            if test_value == 1:
+                health_status["checks"]["database"] = "healthy"
+            else:
+                health_status["checks"]["database"] = f"unexpected_result: {test_value}"
+                health_status["status"] = "unhealthy"
     except Exception as e:
         health_status["checks"]["database"] = f"unhealthy: {str(e)}"
         health_status["status"] = "unhealthy"

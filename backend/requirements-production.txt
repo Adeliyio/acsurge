@@ -111,6 +111,7 @@ alembic==1.13.0  # For database migrations
 psutil>=6.0.0  # Updated for system monitoring
 structlog==23.2.0  # For logging
 redis==5.0.1  # For caching and background tasks
+tenacity==9.0.0  # For retry logic and resilience
 
 # Optional production packages
 # celery==5.3.4  # For background tasks

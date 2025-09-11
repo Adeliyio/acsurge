@@ -8,8 +8,8 @@ NIXPACKS_PYTHON_VERSION = "3.11"
 NIXPACKS_PYTHON_REQUIREMENTS_FILE = "backend/requirements-production.txt"
 
 [deploy]
-# Test imports first, then start the application
-startCommand = "cd backend && echo 'Testing imports...' && python test_imports.py && echo 'Starting AdCopySurge API...' && PYTHONPATH=/app/backend gunicorn -c gunicorn-railway.conf.py main_production:app"
+# Use optimized startup script with database health checks and retries
+startCommand = "chmod +x backend/start-railway.sh && backend/start-railway.sh"
 
 # Environment variables that need to be set in Railway dashboard
 # Copy these variable names to Railway dashboard and set appropriate values
