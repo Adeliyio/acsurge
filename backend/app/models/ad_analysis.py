@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Text, JSON, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Text, JSON, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -32,8 +32,10 @@ class AdAnalysis(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    # Relationship
+    # Relationships
     user = relationship("User", back_populates="analyses")
+    competitor_benchmarks = relationship("CompetitorBenchmark", back_populates="analysis", cascade="all, delete-orphan")
+    generated_alternatives = relationship("AdGeneration", back_populates="analysis", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<AdAnalysis(id='{self.id}', score={self.overall_score}, platform='{self.platform}')>"

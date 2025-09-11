@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AdCopySurge API",
     description="AI-powered ad copy analysis and optimization platform",
-    version=settings.VERSION,
+    version=settings.APP_VERSION,
     docs_url="/api/docs" if settings.DEBUG else None,
     redoc_url="/api/redoc" if settings.DEBUG else None,
     openapi_url="/api/openapi.json" if settings.DEBUG else None,
@@ -143,7 +143,7 @@ async def kubernetes_health_check():
     health_status = {
         "status": "healthy",
         "timestamp": time.time(),
-        "version": settings.VERSION,
+        "version": settings.APP_VERSION,
         "checks": {}
     }
     

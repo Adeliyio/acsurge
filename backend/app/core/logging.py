@@ -1,18 +1,31 @@
 import logging
 import sys
 from typing import Any, Dict
-import structlog
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlAlchemyIntegration
 from app.core.config import settings
+
+# Optional imports for advanced logging features
+try:
+    import structlog
+    STRUCTLOG_AVAILABLE = True
+except ImportError:
+    STRUCTLOG_AVAILABLE = False
+    structlog = None
+
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlAlchemyIntegration
+    SENTRY_AVAILABLE = True
+except ImportError:
+    SENTRY_AVAILABLE = False
+    sentry_sdk = None
 
 
 def setup_logging() -> None:
     """Configure structured logging and Sentry error tracking."""
     
-    # Configure Sentry if DSN is provided
-    if settings.SENTRY_DSN:
+    # Configure Sentry if DSN is provided and Sentry is available
+    if settings.SENTRY_DSN and SENTRY_AVAILABLE:
         sentry_sdk.init(
             dsn=settings.SENTRY_DSN,
             integrations=[
@@ -24,47 +37,56 @@ def setup_logging() -> None:
             ],
             traces_sample_rate=0.1,  # Adjust for production
             profiles_sample_rate=0.1,
-            environment=settings.NODE_ENV,
-            release=settings.VERSION,
+            environment=settings.ENVIRONMENT,
+            release=settings.APP_VERSION,
             before_send=filter_sentry_events,
         )
-
-    # Configure structlog
-    timestamper = structlog.processors.TimeStamper(fmt="ISO")
-    
-    shared_processors = [
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.PositionalArgumentsFormatter(),
-        timestamper,
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.UnicodeDecoder(),
-    ]
-
-    if settings.DEBUG:
-        # Pretty console output for development
-        structlog.configure(
-            processors=shared_processors + [
-                structlog.dev.ConsoleRenderer(colors=True)
-            ],
-            context_class=dict,
-            logger_factory=structlog.stdlib.LoggerFactory(),
-            wrapper_class=structlog.stdlib.BoundLogger,
-            cache_logger_on_first_use=True,
-        )
+        print("✅ Sentry error tracking initialized")
+    elif settings.SENTRY_DSN and not SENTRY_AVAILABLE:
+        print("⚠️ Sentry DSN configured but sentry-sdk not available")
     else:
-        # JSON output for production
-        structlog.configure(
-            processors=shared_processors + [
-                structlog.processors.JSONRenderer()
-            ],
-            context_class=dict,
-            logger_factory=structlog.stdlib.LoggerFactory(),
-            wrapper_class=structlog.stdlib.BoundLogger,
-            cache_logger_on_first_use=True,
-        )
+        print("ℹ️ Sentry error tracking not configured")
+
+    # Configure structlog if available
+    if STRUCTLOG_AVAILABLE:
+        timestamper = structlog.processors.TimeStamper(fmt="ISO")
+        
+        shared_processors = [
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.add_logger_name,
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            timestamper,
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.UnicodeDecoder(),
+        ]
+
+        if settings.DEBUG:
+            # Pretty console output for development
+            structlog.configure(
+                processors=shared_processors + [
+                    structlog.dev.ConsoleRenderer(colors=True)
+                ],
+                context_class=dict,
+                logger_factory=structlog.stdlib.LoggerFactory(),
+                wrapper_class=structlog.stdlib.BoundLogger,
+                cache_logger_on_first_use=True,
+            )
+        else:
+            # JSON output for production
+            structlog.configure(
+                processors=shared_processors + [
+                    structlog.processors.JSONRenderer()
+                ],
+                context_class=dict,
+                logger_factory=structlog.stdlib.LoggerFactory(),
+                wrapper_class=structlog.stdlib.BoundLogger,
+                cache_logger_on_first_use=True,
+            )
+        print("✅ Structured logging (structlog) initialized")
+    else:
+        print("⚠️ Structured logging not available - using basic logging")
 
     # Set log level based on settings
     log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
@@ -102,9 +124,12 @@ def filter_sentry_events(event: Dict[str, Any], hint: Dict[str, Any]) -> Dict[st
     return event
 
 
-def get_logger(name: str) -> structlog.BoundLogger:
+def get_logger(name: str):
     """Get a structured logger instance."""
-    return structlog.get_logger(name)
+    if STRUCTLOG_AVAILABLE:
+        return structlog.get_logger(name)
+    else:
+        return logging.getLogger(name)
 
 
 # Application-specific loggers

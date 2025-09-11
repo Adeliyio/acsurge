@@ -6,8 +6,8 @@ builder = "NIXPACKS"
 NIXPACKS_PYTHON_VERSION = "3.11"
 
 [deploy]
-# Environment variables are working - start the application directly
-startCommand = "cd backend && echo 'Starting AdCopySurge API...' && PYTHONPATH=/app/backend gunicorn -c gunicorn-railway.conf.py main_production:app"
+# Test imports first, then start the application
+startCommand = "cd backend && echo 'Testing imports...' && python test_imports.py && echo 'Starting AdCopySurge API...' && PYTHONPATH=/app/backend gunicorn -c gunicorn-railway.conf.py main_production:app"
 
 # Environment variables that need to be set in Railway dashboard
 # Copy these variable names to Railway dashboard and set appropriate values
