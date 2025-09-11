@@ -1,0 +1,56 @@
+[build]
+builder = "NIXPACKS"
+
+[build.env]
+# Tell Nixpacks to use production requirements file first, fallback to regular
+NIXPACKS_PYTHON_PACKAGE_FILE = "backend/requirements-production.txt"
+
+[deploy]
+# Use the backend directory as the working directory
+workingDirectory = "backend"
+startCommand = "gunicorn -c gunicorn-railway.conf.py main_production:app"
+
+# Environment variables that need to be set in Railway dashboard
+# Copy these variable names to Railway dashboard and set appropriate values
+[variables]
+# REQUIRED environment variables - must be set in Railway dashboard:
+# DATABASE_URL = "postgresql://user:password@host:port/database"  # PostgreSQL connection string
+# SECRET_KEY = "your-32-character-secret-key-here"  # Must be 32+ characters for JWT
+
+# AI Services (at least one required):
+# OPENAI_API_KEY = "sk-..."  # OpenAI API key for AI features
+# HUGGINGFACE_API_KEY = "hf_..."  # Optional: HuggingFace API key
+
+# Security & CORS (update with your actual domains):
+# ALLOWED_HOSTS = "your-app.railway.app,*.railway.app"  # Railway domain + any custom domains
+# CORS_ORIGINS = "https://your-frontend.railway.app,https://your-custom-domain.com"  # Frontend origins
+
+# Optional Supabase integration:
+# REACT_APP_SUPABASE_URL = "https://your-project.supabase.co"
+# REACT_APP_SUPABASE_ANON_KEY = "your-anon-key"
+# SUPABASE_SERVICE_ROLE_KEY = "your-service-role-key"
+# SUPABASE_JWT_SECRET = "your-jwt-secret"
+
+# Optional services:
+# REDIS_URL = "redis://user:pass@host:port/db"  # If using Redis for caching
+# SENTRY_DSN = "https://...@sentry.io/..."  # Error tracking
+
+# Email configuration (optional):
+# SMTP_SERVER = "smtp.gmail.com"
+# SMTP_PORT = "587"
+# SMTP_USERNAME = "your-email@gmail.com"
+# SMTP_PASSWORD = "your-app-password"
+# MAIL_FROM = "noreply@yourdomain.com"
+
+# Payment processing (optional):
+# PADDLE_VENDOR_ID = "your-vendor-id"
+# PADDLE_API_KEY = "your-paddle-api-key"
+# PADDLE_WEBHOOK_SECRET = "your-webhook-secret"
+# PADDLE_ENVIRONMENT = "production"  # or "sandbox" for testing
+
+# Application defaults (can be overridden):
+ENVIRONMENT = "production"
+DEBUG = "false"
+LOG_LEVEL = "info"
+HOST = "0.0.0.0"
+# PORT is automatically set by Railway

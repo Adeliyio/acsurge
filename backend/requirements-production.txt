@@ -95,7 +95,7 @@ six==1.17.0
 typing-inspection==0.4.1
 
 # Production essentials (not currently installed)
-# gunicorn==21.2.0  # Uncomment for production deployment
+gunicorn==21.2.0  # Production WSGI server
 # alembic==1.13.0  # For database migrations
 # psutil==5.9.6  # For system monitoring
 
