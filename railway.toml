@@ -17,6 +17,12 @@ startCommand = "gunicorn -c gunicorn-railway.conf.py main_production:app"
 # DATABASE_URL = "postgresql://user:password@host:port/database"  # PostgreSQL connection string
 # SECRET_KEY = "your-32-character-secret-key-here"  # Must be 32+ characters for JWT
 
+# REQUIRED Supabase authentication (your app uses Supabase for auth):
+# REACT_APP_SUPABASE_URL = "https://your-project-ref.supabase.co"  # Your Supabase project URL
+# REACT_APP_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiI..."  # Your Supabase anon/public key
+# SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiI..."  # Your Supabase service role key (optional but recommended)
+# SUPABASE_JWT_SECRET = "your-jwt-secret"  # Your Supabase JWT secret (optional)
+
 # AI Services (at least one required):
 # OPENAI_API_KEY = "sk-..."  # OpenAI API key for AI features
 # HUGGINGFACE_API_KEY = "hf_..."  # Optional: HuggingFace API key
@@ -24,12 +30,6 @@ startCommand = "gunicorn -c gunicorn-railway.conf.py main_production:app"
 # Security & CORS (update with your actual domains):
 # ALLOWED_HOSTS = "your-app.railway.app,*.railway.app"  # Railway domain + any custom domains
 # CORS_ORIGINS = "https://your-frontend.railway.app,https://your-custom-domain.com"  # Frontend origins
-
-# Optional Supabase integration:
-# REACT_APP_SUPABASE_URL = "https://your-project.supabase.co"
-# REACT_APP_SUPABASE_ANON_KEY = "your-anon-key"
-# SUPABASE_SERVICE_ROLE_KEY = "your-service-role-key"
-# SUPABASE_JWT_SECRET = "your-jwt-secret"
 
 # Optional services:
 # REDIS_URL = "redis://user:pass@host:port/db"  # If using Redis for caching

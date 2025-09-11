@@ -42,6 +42,22 @@ DATABASE_URL=postgresql://user:password@host:port/database
 SECRET_KEY=your-32-character-secret-key-here-minimum-length
 ```
 
+#### REQUIRED Supabase Authentication
+**⚠️ CRITICAL**: Your app uses Supabase for authentication - these are required:
+
+```bash
+REACT_APP_SUPABASE_URL=https://your-project-ref.supabase.co
+REACT_APP_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiI...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiI...  # Recommended for backend operations
+SUPABASE_JWT_SECRET=your-jwt-secret  # Optional but recommended for token verification
+```
+
+**To get these values:**
+1. Go to your [Supabase Dashboard](https://app.supabase.com/)
+2. Select your project
+3. Go to Settings > API
+4. Copy the Project URL and anon/service_role keys
+
 #### AI Services (Choose One)
 ```bash
 OPENAI_API_KEY=sk-your-openai-api-key-here
@@ -125,9 +141,17 @@ If using an external database (like Supabase):
 ### Common Issues
 
 1. **Build Fails**: Check that `requirements-production.txt` includes all necessary packages
-2. **App Won't Start**: Verify `SECRET_KEY` and `DATABASE_URL` are set correctly  
-3. **CORS Errors**: Update `CORS_ORIGINS` to include your frontend domain
-4. **AI Features Don't Work**: Ensure `OPENAI_API_KEY` is set and valid
+2. **App Won't Start**: Verify `SECRET_KEY`, `DATABASE_URL`, and Supabase variables are set correctly  
+3. **Authentication Fails**: 
+   - Verify `REACT_APP_SUPABASE_URL` and `REACT_APP_SUPABASE_ANON_KEY` are correct
+   - Check that your Supabase project is active and accessible
+   - Ensure JWT tokens from frontend are being passed correctly
+4. **CORS Errors**: Update `CORS_ORIGINS` to include your frontend domain
+5. **AI Features Don't Work**: Ensure `OPENAI_API_KEY` is set and valid
+6. **Users Can't Login**: 
+   - Check Supabase Auth settings in your Supabase dashboard
+   - Verify that your Railway domain is added to Supabase's allowed origins
+   - Check network connectivity between Railway and Supabase
 
 ### Logs
 
