@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, Query
-from fastapi.responses import XMLResponse, PlainTextResponse
+from fastapi.responses import Response, PlainTextResponse
 from typing import List, Optional
 import os
 
@@ -32,8 +32,8 @@ async def get_blog_posts(
     category: Optional[PostCategory] = Query(None, description="Filter by category"),
     limit: int = Query(20, ge=1, le=100, description="Number of posts to return"),
     offset: int = Query(0, ge=0, description="Number of posts to skip"),
-    sort_by: str = Query("published_at", regex="^(published_at|created_at|title|views)$"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$")
+    sort_by: str = Query("published_at", pattern="^(published_at|created_at|title|views)$"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$")
 ):
     """Get list of blog posts with filtering and pagination"""
     
@@ -62,8 +62,8 @@ async def search_blog_posts(
     status: Optional[PostStatus] = Query(PostStatus.PUBLISHED, description="Filter by post status"),
     limit: int = Query(20, ge=1, le=100, description="Number of posts to return"),
     offset: int = Query(0, ge=0, description="Number of posts to skip"),
-    sort_by: str = Query("published_at", regex="^(published_at|created_at|title|views)$"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$")
+    sort_by: str = Query("published_at", pattern="^(published_at|created_at|title|views)$"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$")
 ):
     """Search blog posts"""
     
@@ -244,7 +244,7 @@ async def get_all_posts_admin(
 
 
 # SEO endpoints
-@router.get("/sitemap.xml", response_class=XMLResponse)
+@router.get("/sitemap.xml")
 async def get_sitemap():
     """Generate XML sitemap for blog posts"""
     
@@ -254,16 +254,16 @@ async def get_sitemap():
         
         sitemap_xml = seo_service.generate_sitemap(posts, additional_urls)
         
-        return XMLResponse(
+        return Response(
             content=sitemap_xml,
-            headers={"Content-Type": "application/xml; charset=utf-8"}
+            media_type="application/xml; charset=utf-8"
         )
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate sitemap: {str(e)}")
 
 
-@router.get("/rss.xml", response_class=XMLResponse)
+@router.get("/rss.xml")
 async def get_rss_feed():
     """Generate RSS feed for blog posts"""
     
@@ -272,10 +272,10 @@ async def get_rss_feed():
         
         rss_xml = seo_service.generate_rss_feed(posts)
         
-        return XMLResponse(
+        return Response(
             content=rss_xml,
+            media_type="application/rss+xml; charset=utf-8",
             headers={
-                "Content-Type": "application/rss+xml; charset=utf-8",
                 "Cache-Control": "public, max-age=3600"  # Cache for 1 hour
             }
         )

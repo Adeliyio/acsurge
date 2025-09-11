@@ -157,8 +157,8 @@ class BlogPostSearch(BaseModel):
     status: Optional[PostStatus] = PostStatus.PUBLISHED
     limit: int = Field(20, ge=1, le=100)
     offset: int = Field(0, ge=0)
-    sort_by: str = Field("published_at", regex="^(published_at|created_at|title|views)$")
-    sort_order: str = Field("desc", regex="^(asc|desc)$")
+    sort_by: str = Field("published_at", pattern="^(published_at|created_at|title|views)$")
+    sort_order: str = Field("desc", pattern="^(asc|desc)$")
 
 
 class BlogPostResponse(BaseModel):
