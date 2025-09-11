@@ -42,7 +42,7 @@ filelock==3.19.1
 # To enable AI emotion analysis locally, install: pip install torch scikit-learn
 
 # HTTP requests
-httpx==0.25.2
+httpx>=0.26,<0.29  # Compatible with both openai 1.57.2 and supabase 2.18.1
 httpcore==1.0.9
 anyio==3.7.1
 sniffio==1.3.1
