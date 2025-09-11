@@ -64,11 +64,17 @@ frontend/
 ## 📦 Installation
 
 ### Prerequisites
-- Python 3.11+
+- Python 3.12+ (Required for Railway deployment)
 - Node.js 18+
 - PostgreSQL 15+
 - Redis 7+
 - Docker & Docker Compose (optional)
+
+### Python 3.12 Compatibility
+This application is configured for Python 3.12 compatibility to ensure optimal deployment on Railway. The package dependencies are carefully managed using:
+- **constraints-py312.txt**: Ensures all packages use Python 3.12 compatible wheels
+- **runtime.txt**: Specifies exact Python version for deployment
+- **Updated package versions**: All dependencies use versions with pre-built Python 3.12 wheels
 
 ### Quick Start with Docker
 
@@ -107,7 +113,11 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 
 2. **Install dependencies**
 ```bash
+# For local development
 pip install -r requirements.txt
+
+# For production/Railway deployment (recommended)
+pip install -r requirements.txt -c constraints-py312.txt --prefer-binary
 ```
 
 3. **Set up database**
@@ -253,6 +263,32 @@ docker-compose -f docker-compose.prod.yml up -d
 - **Backend**: Railway, Heroku, DigitalOcean App Platform
 - **Frontend**: Vercel, Netlify, Cloudflare Pages
 - **Database**: Railway PostgreSQL, Heroku Postgres, AWS RDS
+
+### Railway Deployment Troubleshooting
+
+#### Python 3.12 Compatibility Issues
+If you encounter `distutils` errors during deployment:
+
+1. **Verify Configuration Files**:
+   - `runtime.txt` specifies Python 3.12.7
+   - `nixpacks.toml` uses constraints file
+   - All requirements use Python 3.12 compatible versions
+
+2. **Common Error Fixes**:
+   ```bash
+   # Error: ModuleNotFoundError: No module named 'distutils'
+   # Solution: All package versions updated to use pre-built wheels
+   
+   # Error: numpy==1.25.2 compilation failed
+   # Solution: Updated to numpy>=1.26.2 with Python 3.12 wheels
+   ```
+
+3. **Deployment Commands**:
+   ```bash
+   # Railway uses these commands (configured in nixpacks.toml):
+   pip install --upgrade pip setuptools wheel
+   pip install -r requirements.txt -c constraints-py312.txt --no-cache-dir --prefer-binary
+   ```
 
 ## 📊 Analytics & Monitoring
 
