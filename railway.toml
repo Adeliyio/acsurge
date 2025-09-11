@@ -6,8 +6,8 @@ builder = "NIXPACKS"
 NIXPACKS_PYTHON_VERSION = "3.11"
 
 [deploy]
-# Change to backend directory and start the app
-startCommand = "cd backend && gunicorn -c gunicorn-railway.conf.py main_production:app"
+# Use startup script for robust Railway deployment
+startCommand = "chmod +x start-railway.sh && ./start-railway.sh"
 
 # Environment variables that need to be set in Railway dashboard
 # Copy these variable names to Railway dashboard and set appropriate values

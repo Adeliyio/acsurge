@@ -2,6 +2,24 @@ from pydantic_settings import BaseSettings
 from pydantic import Field, validator
 from typing import List, Optional, Union
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (for local development)
+# Get the directory where this config.py file is located
+CONFIG_DIR = Path(__file__).resolve().parent
+# Go up to backend directory and load .env file
+BACKEND_DIR = CONFIG_DIR.parent.parent
+ENV_FILE = BACKEND_DIR / ".env"
+
+# Only load .env file in development (Railway/production uses environment variables directly)
+if os.environ.get('ENVIRONMENT') != 'production' and ENV_FILE.exists():
+    print(f"Loading .env file from {ENV_FILE}")
+    load_dotenv(dotenv_path=ENV_FILE)
+elif os.environ.get('ENVIRONMENT') == 'production':
+    print("Production environment detected, using Railway environment variables")
+else:
+    print(f"Development environment: .env file not found at {ENV_FILE}")
 
 class Settings(BaseSettings):
     # Environment Configuration
@@ -137,8 +155,11 @@ class Settings(BaseSettings):
         return self.ENVIRONMENT == "development"
     
     class Config:
-        env_file = ".env"
+        # Use absolute path to .env file as fallback
+        env_file = str(BACKEND_DIR / ".env") if 'BACKEND_DIR' in globals() else ".env"
         env_file_encoding = 'utf-8'
         case_sensitive = True
+        # Allow extra fields to make .env file more flexible
+        extra = 'ignore'
 
 settings = Settings()

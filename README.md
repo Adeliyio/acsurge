@@ -141,27 +141,33 @@ npm start
 
 ### Environment Variables
 
-Create a `.env` file in the root directory:
+⚠️ **Important**: Proper environment configuration is critical for the application to run successfully.
 
+📖 **See [ENVIRONMENT_SETUP.md](./ENVIRONMENT_SETUP.md) for complete configuration guide.**
+
+**Quick Setup:**
+1. Copy the example environment file: `cp backend/.env.example backend/.env`
+2. Edit `backend/.env` and set the **required variables**:
+   - `SECRET_KEY` (minimum 32 characters)
+   - `DATABASE_URL`
+3. Test configuration: `cd backend && python -c "from app.core.config import settings; print('✅ Config loaded!')"`
+
+**Required Variables (minimum):**
 ```env
-# Database
-DATABASE_URL=postgresql://username:password@localhost/adcopysurge
+# backend/.env
+SECRET_KEY=your-super-secret-key-change-this-min-32-chars
+DATABASE_URL=sqlite:///./adcopysurge.db
+```
 
-# Security
-SECRET_KEY=your-secret-key-here
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# AI APIs
+**Optional but Recommended:**
+```env
+# AI Services
 OPENAI_API_KEY=your-openai-api-key
 HUGGINGFACE_API_KEY=your-huggingface-api-key
 
-# Stripe (for payments)
-STRIPE_PUBLISHABLE_KEY=pk_test_...
-STRIPE_SECRET_KEY=sk_test_...
-
-# Email
-MAIL_USERNAME=your-email@gmail.com
-MAIL_PASSWORD=your-app-password
+# Email Configuration
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
 ```
 
 ## 📝 API Documentation
