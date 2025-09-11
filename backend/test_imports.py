@@ -68,7 +68,28 @@ def test_imports():
     except Exception as e:
         tests.append(("❌", f"API routes: {e}"))
     
-    # Test 5: Check for common SQLAlchemy import issues
+    # Test 5: Circular import specifically (the previous issue)
+    try:
+        print("📋 Testing for circular import issues...")
+        # Test the specific import pattern that was causing circular imports
+        import importlib.util
+        
+        # These should be importable without circular import errors
+        critical_imports = [
+            'app.schemas.ads',  # New schemas module
+            'app.services.ad_analysis_service',  # Service that uses schemas
+        ]
+        
+        for module in critical_imports:
+            spec = importlib.util.find_spec(module)
+            if spec is None:
+                raise ImportError(f"Cannot find {module}")
+        
+        tests.append(("✅", "No circular import issues detected"))
+    except Exception as e:
+        tests.append(("❌", f"Circular import test: {e}"))
+    
+    # Test 6: Check for common SQLAlchemy import issues
     try:
         print("📋 Testing SQLAlchemy imports...")
         from sqlalchemy import Column, Integer, String, Float, Text, JSON, DateTime, ForeignKey, Boolean

@@ -8,7 +8,7 @@ from app.services.readability_analyzer import ReadabilityAnalyzer
 from app.services.emotion_analyzer import EmotionAnalyzer
 from app.services.cta_analyzer import CTAAnalyzer
 from app.models.ad_analysis import AdAnalysis
-from app.api.ads import AdInput, CompetitorAd, AdScore, AdAlternative, AdAnalysisResponse
+from app.schemas.ads import AdInput, CompetitorAd, AdScore, AdAlternative, AdAnalysisResponse
 
 class AdAnalysisService:
     """Main service for ad analysis and optimization"""
