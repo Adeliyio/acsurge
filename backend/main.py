@@ -13,8 +13,11 @@ from app.core.logging import setup_logging, get_logger
 setup_logging()
 logger = get_logger(__name__)
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Create database tables (if engine is available)
+if engine is not None:
+    Base.metadata.create_all(bind=engine)
+else:
+    logger.warning("Database engine not available - skipping table creation")
 
 app = FastAPI(
     title="AdCopySurge API",

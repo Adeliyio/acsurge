@@ -7,13 +7,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import time
-import psutil
 import os
 from datetime import datetime
 from typing import Dict, Any
 from app.core.database import get_db
 from app.core.config import settings
 from app.core.logging import get_logger
+
+# Optional import for system monitoring
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    print("⚠️ psutil not available - system monitoring disabled")
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -54,71 +61,83 @@ async def health_check(db: Session = Depends(get_db)):
         logger.error(f"Database health check failed: {e}")
     
     # 2. Disk space check
-    try:
-        disk_usage = psutil.disk_usage('/')
-        free_space_gb = disk_usage.free / (1024**3)
-        used_percent = (disk_usage.used / disk_usage.total) * 100
-        
-        if used_percent > 90:
-            is_healthy = False
+    if PSUTIL_AVAILABLE:
+        try:
+            disk_usage = psutil.disk_usage('/')
+            free_space_gb = disk_usage.free / (1024**3)
+            used_percent = (disk_usage.used / disk_usage.total) * 100
+            
+            if used_percent > 90:
+                is_healthy = False
+                health_status["checks"]["disk"] = {
+                    "status": "critical",
+                    "message": f"Low disk space: {used_percent:.1f}% used",
+                    "free_space_gb": round(free_space_gb, 2),
+                    "used_percent": round(used_percent, 1)
+                }
+            elif used_percent > 80:
+                health_status["checks"]["disk"] = {
+                    "status": "warning",
+                    "message": f"Moderate disk usage: {used_percent:.1f}% used",
+                    "free_space_gb": round(free_space_gb, 2),
+                    "used_percent": round(used_percent, 1)
+                }
+            else:
+                health_status["checks"]["disk"] = {
+                    "status": "healthy",
+                    "message": "Sufficient disk space available",
+                    "free_space_gb": round(free_space_gb, 2),
+                    "used_percent": round(used_percent, 1)
+                }
+        except Exception as e:
             health_status["checks"]["disk"] = {
-                "status": "critical",
-                "message": f"Low disk space: {used_percent:.1f}% used",
-                "free_space_gb": round(free_space_gb, 2),
-                "used_percent": round(used_percent, 1)
+                "status": "unknown",
+                "message": f"Could not check disk space: {str(e)}"
             }
-        elif used_percent > 80:
-            health_status["checks"]["disk"] = {
-                "status": "warning",
-                "message": f"Moderate disk usage: {used_percent:.1f}% used",
-                "free_space_gb": round(free_space_gb, 2),
-                "used_percent": round(used_percent, 1)
-            }
-        else:
-            health_status["checks"]["disk"] = {
-                "status": "healthy",
-                "message": "Sufficient disk space available",
-                "free_space_gb": round(free_space_gb, 2),
-                "used_percent": round(used_percent, 1)
-            }
-    except Exception as e:
+    else:
         health_status["checks"]["disk"] = {
-            "status": "unknown",
-            "message": f"Could not check disk space: {str(e)}"
+            "status": "skipped",
+            "message": "Disk monitoring unavailable - psutil not installed"
         }
     
     # 3. Memory check
-    try:
-        memory = psutil.virtual_memory()
-        memory_percent = memory.percent
-        available_gb = memory.available / (1024**3)
-        
-        if memory_percent > 90:
-            is_healthy = False
+    if PSUTIL_AVAILABLE:
+        try:
+            memory = psutil.virtual_memory()
+            memory_percent = memory.percent
+            available_gb = memory.available / (1024**3)
+            
+            if memory_percent > 90:
+                is_healthy = False
+                health_status["checks"]["memory"] = {
+                    "status": "critical",
+                    "message": f"High memory usage: {memory_percent:.1f}% used",
+                    "available_gb": round(available_gb, 2),
+                    "used_percent": round(memory_percent, 1)
+                }
+            elif memory_percent > 85:
+                health_status["checks"]["memory"] = {
+                    "status": "warning",
+                    "message": f"High memory usage: {memory_percent:.1f}% used",
+                    "available_gb": round(available_gb, 2),
+                    "used_percent": round(memory_percent, 1)
+                }
+            else:
+                health_status["checks"]["memory"] = {
+                    "status": "healthy",
+                    "message": "Memory usage normal",
+                    "available_gb": round(available_gb, 2),
+                    "used_percent": round(memory_percent, 1)
+                }
+        except Exception as e:
             health_status["checks"]["memory"] = {
-                "status": "critical",
-                "message": f"High memory usage: {memory_percent:.1f}% used",
-                "available_gb": round(available_gb, 2),
-                "used_percent": round(memory_percent, 1)
+                "status": "unknown",
+                "message": f"Could not check memory: {str(e)}"
             }
-        elif memory_percent > 85:
-            health_status["checks"]["memory"] = {
-                "status": "warning",
-                "message": f"High memory usage: {memory_percent:.1f}% used",
-                "available_gb": round(available_gb, 2),
-                "used_percent": round(memory_percent, 1)
-            }
-        else:
-            health_status["checks"]["memory"] = {
-                "status": "healthy",
-                "message": "Memory usage normal",
-                "available_gb": round(available_gb, 2),
-                "used_percent": round(memory_percent, 1)
-            }
-    except Exception as e:
+    else:
         health_status["checks"]["memory"] = {
-            "status": "unknown",
-            "message": f"Could not check memory: {str(e)}"
+            "status": "skipped",
+            "message": "Memory monitoring unavailable - psutil not installed"
         }
     
     # 4. Check critical environment variables

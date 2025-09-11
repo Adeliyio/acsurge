@@ -97,17 +97,17 @@ distro==1.9.0
 six==1.17.0
 typing-inspection==0.4.1
 
-# Production essentials (not currently installed)
+# Production essentials
 gunicorn==21.2.0  # Production WSGI server
 # alembic==1.13.0  # For database migrations
-# psutil==5.9.6  # For system monitoring
+psutil==5.9.6  # For system monitoring
 
 # Optional production packages
 # redis==5.0.1  # For caching
 # celery==5.3.4  # For background tasks
 # prometheus-client==0.19.0  # For monitoring
 # sentry-sdk[fastapi]==1.40.0  # For error tracking
-# reportlab==4.0.7  # For PDF generation
+reportlab==4.0.7  # For PDF generation
 # pandas==2.1.4  # For data analysis
 
 # Testing (for CI/CD)

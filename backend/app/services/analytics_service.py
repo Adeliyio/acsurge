@@ -2,15 +2,22 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
 import io
 import base64
 from app.models.ad_analysis import AdAnalysis
 from app.models.user import User
+
+# Optional imports for PDF generation
+try:
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+    REPORTLAB_AVAILABLE = True
+except ImportError:
+    REPORTLAB_AVAILABLE = False
+    print("⚠️ ReportLab not available - PDF generation disabled")
 
 class AnalyticsService:
     """Service for analytics and reporting"""
@@ -107,28 +114,87 @@ class AnalyticsService:
         """Generate PDF report for selected analyses"""
         # Get analyses
         analyses = self.db.query(AdAnalysis)\
-                          .filter(\n                              AdAnalysis.user_id == user_id,\n                              AdAnalysis.id.in_(analysis_ids)\n                          )\
+                          .filter(
+                              AdAnalysis.user_id == user_id,
+                              AdAnalysis.id.in_(analysis_ids)
+                          )\
                           .all()
         
         if not analyses:
             raise ValueError("No analyses found")
         
-        # Generate PDF
-        buffer = io.BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=A4)
-        styles = getSampleStyleSheet()
-        story = []
-        
-        # Title
-        title = Paragraph("AdCopySurge Analysis Report", styles['Title'])
-        story.append(title)
-        story.append(Spacer(1, 20))
-        
-        # Summary
+        # Calculate summary stats
         avg_score = sum(a.overall_score for a in analyses) / len(analyses)
-        summary_text = f\"\"\"
-        Report Generated: {datetime.utcnow().strftime('%B %d, %Y')}<br/>\n        Total Analyses: {len(analyses)}<br/>\n        Average Score: {avg_score:.1f}/100<br/>\n        \"\"\"\n        summary = Paragraph(summary_text, styles['Normal'])\n        story.append(summary)\n        story.append(Spacer(1, 20))\n        \n        # Analysis details\n        for i, analysis in enumerate(analyses, 1):\n            # Analysis header\n            header = Paragraph(f\"Analysis #{i}: {analysis.headline}\", styles['Heading2'])\n            story.append(header)\n            \n            # Scores table\n            scores_data = [\n                ['Metric', 'Score'],\n                ['Overall Score', f\"{analysis.overall_score:.1f}/100\"],\n                ['Clarity', f\"{analysis.clarity_score:.1f}/100\"],\n                ['Persuasion', f\"{analysis.persuasion_score:.1f}/100\"],\n                ['Emotion', f\"{analysis.emotion_score:.1f}/100\"],\n                ['CTA Strength', f\"{analysis.cta_strength_score:.1f}/100\"],\n                ['Platform Fit', f\"{analysis.platform_fit_score:.1f}/100\"],\n            ]\n            \n            scores_table = Table(scores_data)\n            scores_table.setStyle(TableStyle([\n                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),\n                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),\n                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),\n                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),\n                ('FONTSIZE', (0, 0), (-1, 0), 14),\n                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),\n                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),\n                ('GRID', (0, 0), (-1, -1), 1, colors.black)\n            ]))\n            \n            story.append(scores_table)\n            story.append(Spacer(1, 20))\n            \n            # Ad content\n            content_text = f\"\"\"<br/>\n            <b>Platform:</b> {analysis.platform}<br/>\n            <b>Headline:</b> {analysis.headline}<br/>\n            <b>Body:</b> {analysis.body_text}<br/>\n            <b>CTA:</b> {analysis.cta}<br/>\n            \"\"\"\n            content = Paragraph(content_text, styles['Normal'])\n            story.append(content)\n            story.append(Spacer(1, 30))\n        \n        # Build PDF\n        doc.build(story)\n        buffer.seek(0)\n        pdf_data = buffer.getvalue()\n        buffer.close()\n        \n        # Encode PDF as base64 for return\n        pdf_base64 = base64.b64encode(pdf_data).decode('utf-8')\n        \n        return {\n            'url': f\"data:application/pdf;base64,{pdf_base64}\",\n            'download_link': f\"report_{user_id}_{datetime.utcnow().strftime('%Y%m%d')}.pdf\"\n        }
+        summary_text = f"""Report Generated: {datetime.utcnow().strftime('%B %d, %Y')}
+Total Analyses: {len(analyses)}
+Average Score: {avg_score:.1f}/100
+"""
+        
+        # Check if ReportLab is available for PDF generation
+        if not REPORTLAB_AVAILABLE:
+            return {
+                'message': 'PDF generation requires ReportLab package - providing summary instead',
+                'summary': summary_text,
+                'total_analyses': len(analyses),
+                'average_score': round(avg_score, 1),
+                'analyses_included': [{'id': str(a.id), 'headline': a.headline, 'score': a.overall_score} for a in analyses]
+            }
+        
+        # Generate PDF with ReportLab
+        try:
+            buffer = io.BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=A4)
+            styles = getSampleStyleSheet()
+            story = []
+            
+            # Title
+            title = Paragraph("AdCopySurge Analysis Report", styles['Title'])
+            story.append(title)
+            story.append(Spacer(1, 20))
+            
+            # Summary paragraph
+            summary_para = Paragraph(summary_text.replace('\n', '<br/>'), styles['Normal'])
+            story.append(summary_para)
+            story.append(Spacer(1, 20))
+            
+            # Build and return PDF
+            doc.build(story)
+            pdf_data = buffer.getvalue()
+            buffer.close()
+            
+            return {
+                'message': 'PDF report generated successfully',
+                'pdf_data': base64.b64encode(pdf_data).decode('utf-8'),
+                'total_analyses': len(analyses),
+                'average_score': round(avg_score, 1)
+            }
+        except Exception as e:
+            return {
+                'message': f'PDF generation failed: {str(e)}',
+                'summary': summary_text,
+                'total_analyses': len(analyses),
+                'average_score': round(avg_score, 1)
+            }
     
     def get_platform_performance(self, user_id: int) -> Dict[str, Any]:
-        \"\"\"Get performance breakdown by platform\"\"\"
-        platform_stats = self.db.query(\n            AdAnalysis.platform,\n            func.count(AdAnalysis.id).label('count'),\n            func.avg(AdAnalysis.overall_score).label('avg_score'),\n            func.max(AdAnalysis.overall_score).label('max_score')\n        ).filter(\n            AdAnalysis.user_id == user_id\n        ).group_by(\n            AdAnalysis.platform\n        ).all()\n        \n        return [\n            {\n                'platform': row.platform,\n                'total_analyses': row.count,\n                'avg_score': round(float(row.avg_score), 1),\n                'best_score': round(float(row.max_score), 1)\n            }\n            for row in platform_stats\n        ]
+        """Get performance breakdown by platform"""
+        platform_stats = self.db.query(
+            AdAnalysis.platform,
+            func.count(AdAnalysis.id).label('count'),
+            func.avg(AdAnalysis.overall_score).label('avg_score'),
+            func.max(AdAnalysis.overall_score).label('max_score')
+        ).filter(
+            AdAnalysis.user_id == user_id
+        ).group_by(
+            AdAnalysis.platform
+        ).all()
+        
+        return [
+            {
+                'platform': row.platform,
+                'total_analyses': row.count,
+                'avg_score': round(float(row.avg_score), 1),
+                'best_score': round(float(row.max_score), 1)
+            }
+            for row in platform_stats
+        ]
