@@ -1,22 +1,46 @@
-from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
-import torch
 from typing import Dict, Any, List
 import re
+import os
+
+# Optional imports for AI models (fallback if not available)
+try:
+    from transformers import pipeline, AutoTokenizer, AutoModelForSequenceClassification
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    # Create dummy objects for type hints
+    pipeline = None
+    torch = None
 
 class EmotionAnalyzer:
     """Analyzes emotional content and sentiment in ad copy"""
     
     def __init__(self):
         # Initialize emotion classification model
-        try:
-            self.emotion_classifier = pipeline(
-                "text-classification",
-                model="j-hartmann/emotion-english-distilroberta-base",
-                device=0 if torch.cuda.is_available() else -1
-            )
-        except Exception:
-            # Fallback to basic sentiment
-            self.emotion_classifier = pipeline("sentiment-analysis")
+        self.emotion_classifier = None
+        self.use_ai_model = False
+        
+        if TORCH_AVAILABLE:
+            try:
+                self.emotion_classifier = pipeline(
+                    "text-classification",
+                    model="j-hartmann/emotion-english-distilroberta-base",
+                    device=0 if torch.cuda.is_available() else -1
+                )
+                self.use_ai_model = True
+                print("✅ Emotion AI model loaded successfully")
+            except Exception as e:
+                print(f"⚠️ Failed to load emotion AI model: {e}")
+                try:
+                    # Fallback to basic sentiment
+                    self.emotion_classifier = pipeline("sentiment-analysis")
+                    self.use_ai_model = True
+                    print("✅ Fallback sentiment model loaded")
+                except Exception as e2:
+                    print(f"⚠️ Failed to load fallback model: {e2}")
+        else:
+            print("⚠️ PyTorch not available - using rule-based emotion analysis")
         
         # Emotion words mapping
         self.emotion_words = {
@@ -31,30 +55,41 @@ class EmotionAnalyzer:
     
     def analyze_emotion(self, text: str) -> Dict[str, Any]:
         """Analyze emotional content of text"""
-        try:
-            # Get emotion predictions
-            emotions = self.emotion_classifier(text)
-            
-            # Analyze emotion words
-            emotion_word_analysis = self._analyze_emotion_words(text)
-            
-            # Calculate emotional intensity
-            intensity = self._calculate_emotional_intensity(text)
-            
-            # Generate emotion score (0-100)
-            emotion_score = self._calculate_emotion_score(emotions, emotion_word_analysis, intensity)
-            
-            return {
-                'emotion_score': emotion_score,
-                'primary_emotion': emotions[0]['label'] if emotions else 'neutral',
-                'emotion_confidence': emotions[0]['score'] if emotions else 0.5,
-                'emotion_breakdown': emotion_word_analysis,
-                'emotional_intensity': intensity,
-                'recommendations': self._get_emotion_recommendations(emotions, emotion_word_analysis)
-            }
-        except Exception as e:
-            # Fallback analysis
-            return self._fallback_emotion_analysis(text)
+        # Always analyze emotion words and intensity (rule-based)
+        emotion_word_analysis = self._analyze_emotion_words(text)
+        intensity = self._calculate_emotional_intensity(text)
+        
+        emotions = []
+        
+        # Try to use AI model if available
+        if self.use_ai_model and self.emotion_classifier:
+            try:
+                emotions = self.emotion_classifier(text)
+            except Exception as e:
+                print(f"⚠️ AI emotion analysis failed: {e}")
+                emotions = []
+        
+        # Calculate emotion score (works with or without AI)
+        emotion_score = self._calculate_emotion_score(emotions, emotion_word_analysis, intensity)
+        
+        # Determine primary emotion
+        if emotions and len(emotions) > 0:
+            primary_emotion = emotions[0]['label']
+            emotion_confidence = emotions[0]['score']
+        else:
+            # Use rule-based primary emotion
+            primary_emotion = self._get_primary_emotion_from_words(emotion_word_analysis)
+            emotion_confidence = 0.7
+        
+        return {
+            'emotion_score': emotion_score,
+            'primary_emotion': primary_emotion,
+            'emotion_confidence': emotion_confidence,
+            'emotion_breakdown': emotion_word_analysis,
+            'emotional_intensity': intensity,
+            'recommendations': self._get_emotion_recommendations(emotions, emotion_word_analysis),
+            'analysis_method': 'ai_model' if (emotions and len(emotions) > 0) else 'rule_based'
+        }
     
     def _analyze_emotion_words(self, text: str) -> Dict[str, Any]:
         """Analyze presence of emotion-triggering words"""
@@ -84,6 +119,19 @@ class EmotionAnalyzer:
         intensity = min(100, intensity_indicators * 25)
         
         return intensity
+    
+    def _get_primary_emotion_from_words(self, emotion_word_analysis: Dict) -> str:
+        """Determine primary emotion from word-based analysis"""
+        # Find emotion with highest count
+        max_count = 0
+        primary_emotion = 'neutral'
+        
+        for emotion, data in emotion_word_analysis.items():
+            if data['count'] > max_count:
+                max_count = data['count']
+                primary_emotion = emotion
+        
+        return primary_emotion if max_count > 0 else 'neutral'
     
     def _calculate_emotion_score(self, emotions: List[Dict], emotion_words: Dict, intensity: float) -> float:
         """Calculate overall emotion score"""
