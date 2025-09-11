@@ -22,7 +22,7 @@ class MarkdownProcessor:
                     use_pygments=True,
                     linenums=False
                 ),
-                tables.TablesExtension(),
+                tables.TableExtension(),
                 fenced_code.FencedCodeExtension(),
                 'nl2br',
                 'sane_lists'

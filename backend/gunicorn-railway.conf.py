@@ -7,15 +7,20 @@ port = os.environ.get("PORT", "8000")
 bind = f"0.0.0.0:{port}"
 backlog = 2048
 
-# Worker processes - Railway containers have limited CPU, so be conservative
-workers = min(multiprocessing.cpu_count(), 2)  # Max 2 workers for Railway
+# Worker processes - Railway containers have limited CPU and memory
+# Use WEB_CONCURRENCY env var from Railway, fallback to conservative default
+workers = int(os.environ.get("WEB_CONCURRENCY", min(multiprocessing.cpu_count(), 1)))
 worker_class = "uvicorn.workers.UvicornWorker"
-worker_connections = 1000
-max_requests = 1000
-max_requests_jitter = 50
+worker_connections = 512  # Reduced for Railway memory limits
+max_requests = 500  # Lower to prevent memory accumulation
+max_requests_jitter = 25
 preload_app = True
-timeout = 60  # Increased for AI processing
+timeout = 120  # Increased for AI processing (OpenAI API calls)
 keepalive = 2
+
+# Memory optimization for Railway
+max_worker_memory = 256 * 1024 * 1024  # 256MB per worker
+worker_tmp_dir = "/dev/shm"  # Use shared memory if available
 
 # Logging - Railway captures stdout/stderr
 accesslog = "-"  # Log to stdout

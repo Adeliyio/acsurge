@@ -64,8 +64,9 @@ redis==5.0.1
 
 # Blog system dependencies
 python-frontmatter==1.0.1
-markdown-it-py==3.0.0
-Pillow==10.1.0
 python-slugify==8.0.1
+Markdown==3.5.1
+markdown-it-py==3.0.0
 markdown2==2.4.10
 pymdown-extensions==10.7
+Pillow==10.1.0

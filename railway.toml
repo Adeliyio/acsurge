@@ -2,8 +2,10 @@
 builder = "NIXPACKS"
 
 [build.env]
-# Set Python version
+# Set Python version (3.11 for better compatibility with dependencies)
 NIXPACKS_PYTHON_VERSION = "3.11"
+# Ensure we use production requirements
+NIXPACKS_PYTHON_REQUIREMENTS_FILE = "backend/requirements-production.txt"
 
 [deploy]
 # Test imports first, then start the application

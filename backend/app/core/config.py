@@ -139,9 +139,25 @@ class Settings(BaseSettings):
     @validator('DEBUG', pre=True)
     def set_debug_based_on_environment(cls, v, values):
         environment = values.get('ENVIRONMENT', 'development')
-        if environment == 'production':
+        # Force debug off in production and Railway
+        if environment in ['production', 'railway'] or os.getenv('RAILWAY_ENVIRONMENT'):
             return False
         return v
+    
+    @validator('CORS_ORIGINS', pre=True)
+    def ensure_railway_cors(cls, v):
+        """Automatically add Railway domains to CORS if detected"""
+        if isinstance(v, str):
+            origins = [origin.strip() for origin in v.split(',')]
+        else:
+            origins = v
+        
+        # Add Railway domain if we're on Railway
+        railway_url = os.getenv('RAILWAY_PUBLIC_DOMAIN')
+        if railway_url and f"https://{railway_url}" not in origins:
+            origins.append(f"https://{railway_url}")
+            
+        return origins
     
     @validator('PADDLE_API_URL', pre=True)
     def set_paddle_api_url(cls, v, values):

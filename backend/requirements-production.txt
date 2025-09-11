@@ -9,7 +9,8 @@ starlette==0.47.3
 
 # Database
 sqlalchemy==2.0.43
-psycopg2-binary==2.9.9  # PostgreSQL driver (optional)
+psycopg2-binary==2.9.9  # PostgreSQL sync driver
+asyncpg==0.29.0  # PostgreSQL async driver for SQLAlchemy async
 greenlet==3.2.4
 
 # Authentication and Security
@@ -96,6 +97,10 @@ colorama==0.4.6
 distro==1.9.0
 six==1.17.0
 typing-inspection==0.4.1
+
+# Blog system dependencies (missing from production requirements)
+python-frontmatter==1.1.0
+markdown==3.7
 
 # Production essentials
 gunicorn==21.2.0  # Production WSGI server
