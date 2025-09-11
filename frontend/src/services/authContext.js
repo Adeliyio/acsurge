@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { supabase, signIn, signUp, signOut, getCurrentUser } from '../lib/supabaseClient';
+import { runAuthDiagnostics } from '../utils/authDebug';
 
 console.log('🔗 Using Supabase for authentication');
 
@@ -12,6 +13,27 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+};
+
+// Network connectivity check utility
+const checkNetworkConnectivity = async () => {
+  try {
+    // Try a simple fetch to a reliable endpoint
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    
+    const response = await fetch('https://httpbin.org/get', {
+      method: 'GET',
+      signal: controller.signal,
+      cache: 'no-cache'
+    });
+    
+    clearTimeout(timeoutId);
+    return response.ok;
+  } catch (error) {
+    console.warn('⚠️ Network connectivity check failed:', error.message);
+    return false;
+  }
 };
 
 export const AuthProvider = ({ children }) => {
@@ -26,52 +48,143 @@ export const AuthProvider = ({ children }) => {
     
     console.log('🔄 AuthProvider initializing...');
     
-    // Check initial session immediately with timeout
+    // Check initial session immediately with timeout and fallbacks
     const initializeAuth = async () => {
+      // Set overall timeout for auth initialization (prevent infinite loading)
+      const overallTimeoutId = setTimeout(() => {
+        console.warn('⏰ Auth initialization taking too long, forcing completion...');
+        if (mounted) {
+          setLoading(false);
+        }
+      }, 25000); // 25 second overall timeout
+      
       try {
         console.log('🔍 Checking for existing session...');
         
-        // Create a timeout promise that resolves after 10 seconds (extended from 3s)
-        console.log('🕒 Starting auth check with 10s timeout...');
-        const timeoutPromise = new Promise((_, reject) => {
-          timeoutId = setTimeout(() => {
-            console.error('⏰ Authentication check timed out after 10 seconds');
-            reject(new Error('Authentication check timed out'));
-          }, 10000); // Extended to 10 second timeout for slower connections
-        });
-        
-        // Race between the actual auth check and the timeout
-        console.log('🚀 Starting session check...');
-        const sessionStartTime = Date.now();
-        const sessionPromise = supabase.auth.getSession();
-        const { data: { session }, error: sessionError } = await Promise.race([
-          sessionPromise,
-          timeoutPromise
-        ]);
-        const sessionEndTime = Date.now();
-        console.log(`⚡ Session check completed in ${sessionEndTime - sessionStartTime}ms`);
-        
-        // Clear the timeout since we got a response
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-        
-        if (sessionError) {
-          console.error('❌ Session error:', sessionError);
-        } else if (session?.user) {
-          console.log('✅ Found existing session for:', session.user.email);
-          if (mounted) {
-            setUser(session.user);
-            setIsAuthenticated(true);
-            await fetchUserProfile(session.user.id);
+        // Clear overall timeout on any successful completion
+        const clearOverallTimeout = () => {
+          if (overallTimeoutId) {
+            clearTimeout(overallTimeoutId);
           }
+        };
+        
+        // Quick network connectivity check
+        console.log('🌐 Checking network connectivity...');
+        const hasNetwork = await checkNetworkConnectivity();
+        if (!hasNetwork) {
+          console.warn('⚠️ Poor network connectivity detected - authentication may be slower');
         } else {
-          console.log('ℹ️ No existing session found');
+          console.log('✅ Network connectivity confirmed');
         }
+        
+        // Try different approaches in order of preference
+        const attempts = [
+          // Attempt 1: Try localStorage first (fastest)
+          {
+            name: 'LocalStorage check',
+            timeout: 1000,
+            method: () => {
+              const storedSession = localStorage.getItem('adcopysurge-supabase-auth-token');
+              if (storedSession) {
+                try {
+                  const parsed = JSON.parse(storedSession);
+                  if (parsed.expires_at && new Date(parsed.expires_at * 1000) > new Date()) {
+                    return Promise.resolve({ data: { session: parsed }, error: null });
+                  }
+                } catch (e) {
+                  console.warn('⚠️ Failed to parse stored session:', e);
+                }
+              }
+              return Promise.resolve({ data: { session: null }, error: null });
+            }
+          },
+          // Attempt 2: Quick session check with reasonable timeout
+          {
+            name: 'Quick session check',
+            timeout: 8000, // Reduced from 15000ms
+            method: () => supabase.auth.getSession()
+          },
+          // Attempt 3: Direct user check as final fallback
+          {
+            name: 'Direct user check',
+            timeout: 12000, // Reduced from 30000ms
+            method: () => supabase.auth.getUser()
+          }
+        ];
+        
+        for (const attempt of attempts) {
+          try {
+            console.log(`🚀 Trying ${attempt.name} (${attempt.timeout}ms timeout)...`);
+            const startTime = Date.now();
+            
+            // Create timeout promise
+            const timeoutPromise = new Promise((_, reject) => {
+              timeoutId = setTimeout(() => {
+                console.warn(`⏰ ${attempt.name} timed out after ${attempt.timeout}ms`);
+                reject(new Error(`${attempt.name} timed out`));
+              }, attempt.timeout);
+            });
+            
+            // Race between the auth check and timeout
+            const result = await Promise.race([
+              attempt.method(),
+              timeoutPromise
+            ]);
+            
+            const endTime = Date.now();
+            console.log(`⚡ ${attempt.name} completed in ${endTime - startTime}ms`);
+            
+            // Clear timeout
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+              timeoutId = null;
+            }
+            
+            // Handle the result
+            const { data, error } = result;
+            const session = data?.session || data?.user ? { user: data.user || data.session?.user } : null;
+            
+            if (error) {
+              console.warn(`⚠️ ${attempt.name} error:`, error);
+              continue; // Try next method
+            }
+            
+            if (session?.user) {
+              console.log(`✅ Found session via ${attempt.name} for:`, session.user.email);
+              if (mounted) {
+                setUser(session.user);
+                setIsAuthenticated(true);
+                setLoading(false); // Ensure loading is set to false
+                clearOverallTimeout(); // Clear the overall timeout
+                await fetchUserProfile(session.user.id);
+              }
+              return; // Success, exit the loop
+            }
+            
+            console.log(`ℹ️ ${attempt.name} found no session`);
+            break; // No session found, no need to try other methods
+            
+          } catch (attemptError) {
+            console.warn(`⚠️ ${attempt.name} failed:`, attemptError.message);
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+              timeoutId = null;
+            }
+            // Continue to next attempt
+          }
+        }
+        
+        console.log('ℹ️ All authentication attempts completed - no valid session found');
       } catch (error) {
         console.error('💥 Auth initialization error:', error);
         if (error.message.includes('timed out')) {
-          console.warn('⚠️ Authentication check timed out after 3 seconds, proceeding with unauthenticated state');
+          console.warn('⚠️ All authentication methods timed out, proceeding with unauthenticated state');
+          
+          // Run diagnostics in development to help debug the issue
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔍 Running authentication diagnostics...');
+            setTimeout(() => runAuthDiagnostics(), 1000); // Run after a delay to avoid interfering with initialization
+          }
         }
       } finally {
         if (mounted) {
@@ -79,6 +192,10 @@ export const AuthProvider = ({ children }) => {
         }
         if (timeoutId) {
           clearTimeout(timeoutId);
+        }
+        // Always clear the overall timeout
+        if (overallTimeoutId) {
+          clearTimeout(overallTimeoutId);
         }
       }
     };

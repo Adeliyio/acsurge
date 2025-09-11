@@ -9,8 +9,12 @@
     "@mui/material": "^5.14.20",
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.11.0",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^12.23.12",
     "react": "^18.2.0",
+    "react-countup": "^6.5.3",
     "react-dom": "^18.2.0",
+    "react-dropzone": "^14.3.8",
     "react-hook-form": "^7.62.0",
     "react-hot-toast": "^2.4.1",
     "react-query": "^3.39.3",
@@ -19,20 +23,32 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "dev": "react-scripts start",
+    "frontend": "react-scripts start",
+    "backend": "cd ../backend && python -m uvicorn main_launch_ready:app --reload --port 8000",
+    "dev": "concurrently \"npm run frontend\" \"npm run backend\"",
     "build": "react-scripts build",
     "test": "react-scripts test"
   },
   "devDependencies": {
-    "react-scripts": "^5.0.1",
-    "eslint-scope": "5.1.1"
+    "concurrently": "^7.6.0",
+    "cross-env": "^7.0.3",
+    "eslint-scope": "5.1.1",
+    "react-scripts": "^5.0.1"
   },
   "resolutions": {
     "eslint-scope": "5.1.1"
   },
   "browserslist": {
-    "production": [">0.2%", "not dead", "not op_mini all"],
-    "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   },
   "proxy": "http://localhost:8000"
 }

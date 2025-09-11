@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Backend API (Development Mode)
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./adcopysurge.db
+      - DEBUG=True
+      - HOST=0.0.0.0
+      - PORT=8000
+      - SECRET_KEY=dev-super-secret-key-change-in-production-2024
+      - ALLOWED_HOSTS=["http://localhost:3000", "http://127.0.0.1:3000"]
+    volumes:
+      - ./backend:/app
+    command: uvicorn main_launch_ready:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend (Development Mode)
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    stdin_open: true
+    tty: true

@@ -15,7 +15,7 @@ from .models.blog_models import (
 )
 from .services.blog_service import BlogService
 from .services.seo_service import SEOService
-from ..api.auth import get_current_user_dep, require_admin
+from ..auth import require_admin
 from ..models.user import User
 
 # Initialize router

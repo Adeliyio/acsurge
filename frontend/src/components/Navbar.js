@@ -29,7 +29,14 @@ import {
   ExitToApp as LogoutIcon,
   CreditCard as BillingIcon,
   Help as HelpIcon,
-  Clear as ClearIcon
+  Clear as ClearIcon,
+  KeyboardArrowDown as ArrowDownIcon,
+  Description as DocsIcon,
+  School as TutorialsIcon,
+  Business as CaseStudiesIcon,
+  Code as ApiIcon,
+  VideoLibrary as VideoIcon,
+  Article as BlogIcon
 } from '@mui/icons-material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useCallback, useEffect } from 'react';
@@ -41,6 +48,7 @@ const Navbar = ({ onSidebarToggle, showSidebarToggle = false }) => {
   const location = useLocation();
   const { user, isAuthenticated, subscription, logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
+  const [resourcesAnchorEl, setResourcesAnchorEl] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -51,6 +59,14 @@ const Navbar = ({ onSidebarToggle, showSidebarToggle = false }) => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleResourcesMenuOpen = (event) => {
+    setResourcesAnchorEl(event.currentTarget);
+  };
+
+  const handleResourcesMenuClose = () => {
+    setResourcesAnchorEl(null);
   };
 
   const handleLogout = async () => {
@@ -83,6 +99,46 @@ const Navbar = ({ onSidebarToggle, showSidebarToggle = false }) => {
       console.log('Searching for:', debouncedSearchQuery);
     }
   }, [debouncedSearchQuery]);
+
+  // Resources dropdown items
+  const resourcesMenuItems = [
+    {
+      label: 'API Documentation',
+      description: 'Complete API reference and integration guides',
+      icon: <ApiIcon sx={{ fontSize: '1.2rem' }} />,
+      to: '/resources/api'
+    },
+    {
+      label: 'Getting Started',
+      description: 'Quick start guides and setup tutorials',
+      icon: <DocsIcon sx={{ fontSize: '1.2rem' }} />,
+      to: '/resources/getting-started'
+    },
+    {
+      label: 'Tutorials & Guides',
+      description: 'Step-by-step tutorials and best practices',
+      icon: <TutorialsIcon sx={{ fontSize: '1.2rem' }} />,
+      to: '/resources/tutorials'
+    },
+    {
+      label: 'Case Studies',
+      description: 'Real-world success stories and results',
+      icon: <CaseStudiesIcon sx={{ fontSize: '1.2rem' }} />,
+      to: '/resources/case-studies'
+    },
+    {
+      label: 'Video Library',
+      description: 'Video tutorials and product demos',
+      icon: <VideoIcon sx={{ fontSize: '1.2rem' }} />,
+      to: '/resources/videos'
+    },
+    {
+      label: 'Blog',
+      description: 'Marketing insights and product updates',
+      icon: <BlogIcon sx={{ fontSize: '1.2rem' }} />,
+      to: '/blog'
+    }
+  ];
 
   const getSubscriptionColor = (tier) => {
     switch (tier) {
@@ -254,6 +310,83 @@ const Navbar = ({ onSidebarToggle, showSidebarToggle = false }) => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           {!isAuthenticated ? (
             <>
+              {/* Resources Dropdown for non-authenticated users */}
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <Button
+                  color="primary"
+                  onClick={handleResourcesMenuOpen}
+                  endIcon={<ArrowDownIcon />}
+                  sx={{
+                    '& .MuiSvgIcon-root': {
+                      transition: 'transform 0.2s',
+                      transform: Boolean(resourcesAnchorEl) ? 'rotate(180deg)' : 'none'
+                    }
+                  }}
+                >
+                  Resources
+                </Button>
+                <Menu
+                  anchorEl={resourcesAnchorEl}
+                  open={Boolean(resourcesAnchorEl)}
+                  onClose={handleResourcesMenuClose}
+                  transformOrigin={{ horizontal: 'left', vertical: 'top' }}
+                  anchorOrigin={{ horizontal: 'left', vertical: 'bottom' }}
+                  PaperProps={{
+                    sx: {
+                      mt: 1,
+                      minWidth: 320,
+                      borderRadius: 3,
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                      border: '1px solid',
+                      borderColor: 'divider'
+                    }
+                  }}
+                >
+                  <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="subtitle2" fontWeight={600} color="primary.main">
+                      Resources & Documentation
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Everything you need to get started and succeed
+                    </Typography>
+                  </Box>
+                  {resourcesMenuItems.map((item) => (
+                    <MenuItem
+                      key={item.to}
+                      onClick={() => {
+                        navigate(item.to);
+                        handleResourcesMenuClose();
+                      }}
+                      sx={{ py: 1.5, px: 2 }}
+                    >
+                      <Box sx={{ mr: 2, color: 'primary.main' }}>
+                        {item.icon}
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={600}>
+                          {item.label}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {item.description}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                  <Divider sx={{ my: 1 }} />
+                  <Box sx={{ px: 2, py: 1.5, textAlign: 'center' }}>
+                    <Button
+                      component={Link}
+                      to="/resources"
+                      variant="outlined"
+                      size="small"
+                      fullWidth
+                      onClick={handleResourcesMenuClose}
+                    >
+                      View All Resources
+                    </Button>
+                  </Box>
+                </Menu>
+              </Box>
               <Button
                 color="primary"
                 component={Link}

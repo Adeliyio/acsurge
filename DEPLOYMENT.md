@@ -1,12 +1,13 @@
 # AdCopySurge Deployment Guide
 
-This guide walks you through deploying AdCopySurge to production with Supabase, Vercel, and Railway.
+This guide walks you through deploying AdCopySurge to production with DigitalOcean (backend) and Netlify (frontend).
 
 ## 🚀 Quick Summary
 
-**Current Status**: ✅ Ready for production deployment after Supabase setup
-**Tech Stack**: React + Supabase + FastAPI + Stripe
-**Estimated Setup Time**: 30-45 minutes
+**Current Status**: ✅ Ready for production deployment
+**Tech Stack**: React + FastAPI + PostgreSQL + Redis + GitHub Actions
+**Hosting**: DigitalOcean (backend) + Netlify (frontend)
+**Estimated Setup Time**: 45-60 minutes
 
 ## Prerequisites
 

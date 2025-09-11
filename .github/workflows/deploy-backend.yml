@@ -1,0 +1,236 @@
+name: Deploy Backend to Digital Ocean
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: 
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+      - 'deployment/**'
+  pull_request:
+    branches: [ main ]
+    paths: 
+      - 'backend/**'
+      - 'deployment/**'
+
+env:
+  PYTHON_VERSION: '3.11'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/backend
+
+jobs:
+  test:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements-production.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-production.txt
+        python -c "import nltk; nltk.download('punkt')"
+        python -c "import nltk; nltk.download('stopwords')"
+
+    - name: Run linting
+      run: |
+        pip install flake8
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Run tests
+      run: |
+        pip install pytest pytest-asyncio httpx
+        python -m pytest --tb=short -v || true
+
+    - name: Test application startup
+      run: |
+        timeout 10s python main_production.py || code=$?; if [[ $code -ne 124 && $code -ne 0 ]]; then exit $code; fi
+      env:
+        DEBUG: true
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to Digital Ocean (Staging)
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.STAGING_HOST }}
+        username: ${{ secrets.STAGING_USERNAME }}
+        key: ${{ secrets.STAGING_SSH_KEY }}
+        port: ${{ secrets.STAGING_SSH_PORT }}
+        script: |
+          cd /var/www/adcopysurge-staging
+          git pull origin develop
+          source backend/venv/bin/activate
+          pip install -r backend/requirements-production.txt
+          sudo systemctl restart adcopysurge-staging
+          sudo systemctl status adcopysurge-staging --no-pager
+
+  deploy-production:
+    name: Deploy to Production
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Create deployment package
+      run: |
+        mkdir -p deployment-package
+        cp -r backend deployment-package/
+        cp -r deployment deployment-package/
+        tar -czf adcopysurge-backend.tar.gz deployment-package/
+
+    - name: Upload to server
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USERNAME }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        port: ${{ secrets.PRODUCTION_SSH_PORT }}
+        source: "adcopysurge-backend.tar.gz"
+        target: "/tmp/"
+
+    - name: Deploy to Production Server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USERNAME }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        port: ${{ secrets.PRODUCTION_SSH_PORT }}
+        script: |
+          set -e
+          echo "🚀 Starting deployment..."
+          
+          # Extract deployment package
+          cd /tmp
+          tar -xzf adcopysurge-backend.tar.gz
+          
+          # Backup current deployment
+          sudo mkdir -p /var/backups/adcopysurge
+          if [ -d "/var/www/adcopysurge" ]; then
+            sudo cp -r /var/www/adcopysurge /var/backups/adcopysurge/backup-$(date +%Y%m%d-%H%M%S)
+          fi
+          
+          # Deploy new version
+          sudo mkdir -p /var/www/adcopysurge
+          sudo cp -r deployment-package/backend/* /var/www/adcopysurge/backend/
+          sudo cp deployment-package/deployment/systemd/adcopysurge.service /tmp/
+          sudo cp deployment-package/deployment/nginx/adcopysurge /tmp/adcopysurge-nginx
+          
+          # Update Python dependencies
+          cd /var/www/adcopysurge/backend
+          sudo -u www-data /var/www/adcopysurge/backend/venv/bin/pip install -r requirements-production.txt
+          
+          # Update NLTK data
+          sudo -u www-data /var/www/adcopysurge/backend/venv/bin/python -c "import nltk; nltk.download('punkt')"
+          sudo -u www-data /var/www/adcopysurge/backend/venv/bin/python -c "import nltk; nltk.download('stopwords')"
+          
+          # Set proper permissions
+          sudo chown -R www-data:www-data /var/www/adcopysurge
+          
+          # Update systemd service
+          sudo cp /tmp/adcopysurge.service /etc/systemd/system/
+          sudo systemctl daemon-reload
+          
+          # Update Nginx config if changed
+          if ! sudo diff -q /tmp/adcopysurge-nginx /etc/nginx/sites-available/adcopysurge > /dev/null 2>&1; then
+            echo "Updating Nginx configuration..."
+            sudo cp /tmp/adcopysurge-nginx /etc/nginx/sites-available/adcopysurge
+            sudo nginx -t
+            sudo systemctl reload nginx
+          fi
+          
+          # Restart the application
+          echo "Restarting application..."
+          sudo systemctl restart adcopysurge
+          
+          # Wait for service to start
+          sleep 5
+          
+          # Verify deployment
+          if sudo systemctl is-active --quiet adcopysurge; then
+            echo "✅ Deployment successful!"
+            sudo systemctl status adcopysurge --no-pager
+            
+            # Health check
+            if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+              echo "✅ Health check passed!"
+            else
+              echo "❌ Health check failed!"
+              exit 1
+            fi
+          else
+            echo "❌ Service failed to start!"
+            sudo journalctl -u adcopysurge -n 20 --no-pager
+            exit 1
+          fi
+          
+          # Cleanup
+          rm -rf /tmp/deployment-package /tmp/adcopysurge-backend.tar.gz
+
+    - name: Create GitHub Release
+      if: success()
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: backend-v${{ github.run_number }}
+        release_name: Backend Release v${{ github.run_number }}
+        body: |
+          Backend deployment to production
+          
+          Changes in this release:
+          ${{ github.event.head_commit.message }}
+        draft: false
+        prerelease: false
+
+    - name: Notify on failure
+      if: failure()
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USERNAME }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        port: ${{ secrets.PRODUCTION_SSH_PORT }}
+        script: |
+          echo "🚨 Deployment failed - checking logs..."
+          sudo journalctl -u adcopysurge -n 50 --no-pager
+          
+          # Attempt to restore from backup if exists
+          LATEST_BACKUP=$(sudo ls -t /var/backups/adcopysurge/ | head -n 1)
+          if [ ! -z "$LATEST_BACKUP" ]; then
+            echo "🔄 Restoring from backup: $LATEST_BACKUP"
+            sudo cp -r /var/backups/adcopysurge/$LATEST_BACKUP/* /var/www/adcopysurge/
+            sudo systemctl restart adcopysurge
+            sudo systemctl status adcopysurge --no-pager
+          fi

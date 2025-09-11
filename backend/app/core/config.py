@@ -1,70 +1,144 @@
 from pydantic_settings import BaseSettings
-from pydantic import Field
-from typing import List, Optional
+from pydantic import Field, validator
+from typing import List, Optional, Union
 import os
 
 class Settings(BaseSettings):
-    # App settings
-    APP_NAME: str = "AdCopySurge"
-    VERSION: str = "1.0.0"
-    DEBUG: bool = Field(default=True)  # Change to False in production
-    HOST: str = "127.0.0.1"
-    PORT: int = 8000
+    # Environment Configuration
+    ENVIRONMENT: str = Field(default="development", description="Environment: development, staging, production")
+    DEBUG: bool = Field(default=True, description="Enable debug mode")
+    LOG_LEVEL: str = Field(default="info", description="Logging level")
     
-    # Security
-    SECRET_KEY: str = "your-secret-key-change-this-in-production"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    ALGORITHM: str = "HS256"
+    # Application Settings
+    APP_NAME: str = Field(default="AdCopySurge", description="Application name")
+    APP_VERSION: str = Field(default="1.0.0", description="Application version")
+    HOST: str = Field(default="127.0.0.1", description="Host to bind to")
+    PORT: int = Field(default=8000, description="Port to bind to")
     
-    # Database
-    DATABASE_URL: str = "postgresql://localhost/adcopysurge"
+    # Security Configuration
+    SECRET_KEY: str = Field(..., min_length=32, description="Secret key for JWT tokens")
+    ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60, description="JWT token expiration in minutes")
     
-    # CORS
-    ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    # Database Configuration
+    DATABASE_URL: str = Field(..., description="PostgreSQL database URL")
     
-    # AI APIs
-    OPENAI_API_KEY: Optional[str] = None
-    HUGGINGFACE_API_KEY: Optional[str] = None
+    # Supabase Configuration  
+    REACT_APP_SUPABASE_URL: Optional[str] = Field(None, description="Supabase project URL")
+    REACT_APP_SUPABASE_ANON_KEY: Optional[str] = Field(None, description="Supabase anon key")
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = Field(None, description="Supabase service role key")
+    SUPABASE_JWT_SECRET: Optional[str] = Field(None, description="Supabase JWT secret for token verification")
     
-    # Redis (for caching and background tasks)
-    REDIS_URL: str = "redis://localhost:6379"
+    # CORS Configuration
+    CORS_ORIGINS: Union[str, List[str]] = Field(
+        default="http://localhost:3000,http://127.0.0.1:3000", 
+        description="Allowed CORS origins (comma-separated string or list)"
+    )
+    ALLOWED_HOSTS: Union[str, List[str]] = Field(
+        default="localhost,127.0.0.1", 
+        description="Allowed hosts (comma-separated string or list)"
+    )
     
-    # Email
-    MAIL_USERNAME: Optional[str] = None
-    MAIL_PASSWORD: Optional[str] = None
-    MAIL_FROM: Optional[str] = None
-    MAIL_PORT: int = 587
-    MAIL_SERVER: str = "smtp.gmail.com"
+    # AI Services Configuration
+    OPENAI_API_KEY: Optional[str] = Field(None, description="OpenAI API key")
+    OPENAI_MAX_TOKENS: int = Field(default=2000, description="OpenAI max tokens per request")
+    OPENAI_RATE_LIMIT: int = Field(default=100, description="OpenAI requests per minute")
+    HUGGINGFACE_API_KEY: Optional[str] = Field(None, description="HuggingFace API key")
     
-    # Subscription pricing
-    BASIC_PLAN_PRICE: int = 49  # $49/month
-    PRO_PLAN_PRICE: int = 99    # $99/month
+    # Redis Configuration
+    REDIS_URL: str = Field(default="redis://localhost:6379/0", description="Redis connection URL")
     
-    # Stripe (Legacy - will be removed after Paddle migration)
-    STRIPE_PUBLISHABLE_KEY: Optional[str] = None
-    STRIPE_SECRET_KEY: Optional[str] = None
-    STRIPE_WEBHOOK_SECRET: Optional[str] = None
+    # Email Configuration
+    SMTP_SERVER: str = Field(default="smtp.gmail.com", description="SMTP server host")
+    SMTP_PORT: int = Field(default=587, description="SMTP server port")
+    SMTP_USERNAME: Optional[str] = Field(None, description="SMTP username")
+    SMTP_PASSWORD: Optional[str] = Field(None, description="SMTP password")
+    MAIL_FROM: str = Field(default="noreply@adcopysurge.com", description="Default from email")
+    MAIL_FROM_NAME: str = Field(default="AdCopySurge", description="Default from name")
     
-    # Paddle Billing
-    PADDLE_VENDOR_ID: Optional[str] = None
-    PADDLE_AUTH_CODE: Optional[str] = None  # API Auth Code
-    PADDLE_PUBLIC_KEY: Optional[str] = None  # For webhook signature verification
-    PADDLE_ENVIRONMENT: str = "sandbox"  # sandbox or live
-    PADDLE_API_URL: str = "https://sandbox-vendors.paddle.com/api"  # Will change to live URL in production
+    # Paddle Billing Configuration
+    PADDLE_VENDOR_ID: Optional[str] = Field(None, description="Paddle vendor ID")
+    PADDLE_API_KEY: Optional[str] = Field(None, description="Paddle API key")
+    PADDLE_WEBHOOK_SECRET: Optional[str] = Field(None, description="Paddle webhook secret")
+    PADDLE_ENVIRONMENT: str = Field(default="sandbox", description="Paddle environment: sandbox or production")
+    PADDLE_API_URL: str = Field(
+        default="https://sandbox-vendors.paddle.com/api", 
+        description="Paddle API URL"
+    )
     
-    # Environment
-    NODE_ENV: str = "development"
+    # Paddle Product IDs
+    PADDLE_BASIC_MONTHLY_ID: Optional[str] = Field(None, description="Paddle Basic Monthly Product ID")
+    PADDLE_PRO_MONTHLY_ID: Optional[str] = Field(None, description="Paddle Pro Monthly Product ID")
+    PADDLE_BASIC_YEARLY_ID: Optional[str] = Field(None, description="Paddle Basic Yearly Product ID")
+    PADDLE_PRO_YEARLY_ID: Optional[str] = Field(None, description="Paddle Pro Yearly Product ID")
     
-    # Monitoring & Logging
-    SENTRY_DSN: Optional[str] = None
-    LOG_LEVEL: str = "info"
+    # Monitoring & Error Tracking
+    SENTRY_DSN: Optional[str] = Field(None, description="Sentry DSN for error tracking")
+    SENTRY_ENVIRONMENT: Optional[str] = Field(None, description="Sentry environment")
+    SENTRY_TRACES_SAMPLE_RATE: float = Field(default=0.1, description="Sentry traces sample rate")
+    
+    # Performance & Scaling
+    WORKERS: int = Field(default=1, description="Number of worker processes")
+    KEEP_ALIVE: int = Field(default=2, description="Keep alive timeout")
+    MAX_CONNECTIONS: int = Field(default=100, description="Maximum connections")
+    
+    # Security Headers
+    HSTS_MAX_AGE: int = Field(default=31536000, description="HSTS max age")
+    CONTENT_SECURITY_POLICY: str = Field(
+        default="default-src 'self'; script-src 'self' 'unsafe-inline' cdn.paddle.com; style-src 'self' 'unsafe-inline'",
+        description="Content Security Policy"
+    )
     
     # Feature Flags
-    ENABLE_ANALYTICS: bool = True
-    ENABLE_COMPETITOR_ANALYSIS: bool = True
-    ENABLE_PDF_REPORTS: bool = True
+    ENABLE_ANALYTICS: bool = Field(default=True, description="Enable analytics")
+    ENABLE_COMPETITOR_ANALYSIS: bool = Field(default=False, description="Enable competitor analysis")
+    ENABLE_PDF_REPORTS: bool = Field(default=True, description="Enable PDF report generation")
+    ENABLE_RATE_LIMITING: bool = Field(default=True, description="Enable API rate limiting")
+    
+    # Business Configuration
+    BASIC_PLAN_PRICE: int = Field(default=49, description="Basic plan price in USD")
+    PRO_PLAN_PRICE: int = Field(default=99, description="Pro plan price in USD")
+    FREE_TIER_LIMIT: int = Field(default=5, description="Free tier analysis limit")
+    BASIC_TIER_LIMIT: int = Field(default=100, description="Basic tier analysis limit")
+    PRO_TIER_LIMIT: int = Field(default=500, description="Pro tier analysis limit")
+    
+    @validator('CORS_ORIGINS', pre=True)
+    def parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(',')]
+        return v
+    
+    @validator('ALLOWED_HOSTS', pre=True)
+    def parse_allowed_hosts(cls, v):
+        if isinstance(v, str):
+            return [host.strip() for host in v.split(',')]
+        return v
+    
+    @validator('DEBUG', pre=True)
+    def set_debug_based_on_environment(cls, v, values):
+        environment = values.get('ENVIRONMENT', 'development')
+        if environment == 'production':
+            return False
+        return v
+    
+    @validator('PADDLE_API_URL', pre=True)
+    def set_paddle_api_url(cls, v, values):
+        environment = values.get('PADDLE_ENVIRONMENT', 'sandbox')
+        if environment == 'production':
+            return "https://vendors.paddle.com/api"
+        return "https://sandbox-vendors.paddle.com/api"
+    
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT == "production"
+    
+    @property
+    def is_development(self) -> bool:
+        return self.ENVIRONMENT == "development"
     
     class Config:
         env_file = ".env"
+        env_file_encoding = 'utf-8'
+        case_sensitive = True
 
 settings = Settings()

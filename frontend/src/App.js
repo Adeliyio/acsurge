@@ -9,6 +9,7 @@ import { Toaster } from 'react-hot-toast';
 // Components
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
+import Footer from './components/Footer';
 import Dashboard from './pages/Dashboard';
 import AdAnalysis from './pages/AdAnalysis';
 import AnalysisResults from './pages/AnalysisResults';
@@ -19,6 +20,11 @@ import Register from './pages/Register';
 import Pricing from './pages/Pricing';
 import Profile from './pages/Profile';
 import LandingPage from './pages/LandingPage';
+import ResourcesLanding from './pages/ResourcesLanding';
+import ContactUs from './pages/ContactUs';
+import About from './pages/About';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 
 // New AI-Powered Tools
 import ComplianceChecker from './pages/ComplianceChecker';
@@ -30,8 +36,31 @@ import PsychologyScorer from './pages/PsychologyScorer';
 import BrandVoiceEngine from './pages/BrandVoiceEngine';
 import LegalRiskScanner from './pages/LegalRiskScanner';
 
+// New Shared Workflow Pages
+import ProjectsList from './pages/ProjectsList';
+import ProjectWorkspace from './pages/ProjectWorkspace';
+import UnifiedResultsDashboard from './pages/UnifiedResultsDashboard';
+
+// Resources Pages
+import GettingStarted from './pages/resources/GettingStarted';
+import TutorialsGuides from './pages/resources/TutorialsGuides';
+import CaseStudies from './pages/resources/CaseStudies';
+
+// Coming Soon Pages
+import PartnerProgram from './pages/PartnerProgram';
+import AffiliateProgram from './pages/AffiliateProgram';
+
+// Demo Routes
+import DemoRoutes from './components/demo/DemoRoute';
+
 // Services
 import { AuthProvider, useAuth } from './services/authContext';
+
+// Blog
+import { BlogProvider } from './contexts/BlogContext';
+import Blog from './pages/Blog';
+import BlogPost from './pages/BlogPost';
+import BlogCategory from './pages/BlogCategory';
 
 const theme = createTheme({
   palette: {
@@ -319,7 +348,7 @@ function AppLayout({ children }) {
   const isAuthPage = ['/login', '/register'].includes(location.pathname);
   const isLandingPage = location.pathname === '/';
   const showSidebar = isAuthenticated && !isAuthPage && !isLandingPage;
-  const showNavbar = !isLandingPage;
+  const showNavbar = true; // Show navbar on all pages
 
   const handleSidebarToggle = () => {
     setSidebarOpen(!sidebarOpen);
@@ -357,11 +386,17 @@ function AppLayout({ children }) {
           sx={{
             flexGrow: 1,
             pt: isAuthPage || isLandingPage ? 0 : 2,
-            pb: 3,
+            pb: 0, // Remove bottom padding since footer will handle spacing
             overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
-          {children}
+          <Box sx={{ flexGrow: 1 }}>
+            {children}
+          </Box>
+          {/* Footer - show on all pages except auth pages */}
+          {!isAuthPage && !isAuthenticated && <Footer />}
         </Box>
       </Box>
     </Box>
@@ -374,13 +409,39 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
-          <Router>
-            <AppLayout>
-              <Routes>
+          <BlogProvider>
+            <Router>
+              <AppLayout>
+                <Routes>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/pricing" element={<Pricing />} />
+                
+                {/* Resources Routes - accessible to all users */}
+                <Route path="/resources" element={<ResourcesLanding />} />
+                <Route path="/resources/api" element={<div>API Documentation - Coming Soon</div>} />
+                <Route path="/resources/getting-started" element={<GettingStarted />} />
+                <Route path="/resources/tutorials" element={<TutorialsGuides />} />
+                <Route path="/resources/case-studies" element={<CaseStudies />} />
+                <Route path="/resources/videos" element={<div>Videos - Coming Soon</div>} />
+                <Route path="/resources/blog" element={<Navigate to="/blog" replace />} />
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:slug" element={<BlogPost />} />
+                <Route path="/blog/category/:category" element={<BlogCategory />} />
+                <Route path="/blog/tag/:tag" element={<BlogCategory />} />
+                
+                {/* Legal and Company Pages */}
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/contact" element={<ContactUs />} />
+                <Route path="/about" element={<About />} />
+                
+                {/* Coming Soon Pages */}
+                <Route path="/partners" element={<PartnerProgram />} />
+                <Route path="/partner-program" element={<PartnerProgram />} />
+                <Route path="/affiliates" element={<AffiliateProgram />} />
+                <Route path="/affiliate-program" element={<AffiliateProgram />} />
                 
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
@@ -467,11 +528,40 @@ function App() {
                   </ProtectedRoute>
                 } />
                 
+                {/* New Shared Workflow Routes */}
+                <Route path="/projects" element={
+                  <ProtectedRoute>
+                    <ProjectsList />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/project/new/workspace" element={
+                  <ProtectedRoute>
+                    <ProjectWorkspace />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/project/:projectId/workspace" element={
+                  <ProtectedRoute>
+                    <ProjectWorkspace />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/project/:projectId/results" element={
+                  <ProtectedRoute>
+                    <UnifiedResultsDashboard />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Demo routes */}
+                <Route path="/demo/*" element={<DemoRoutes />} />
+                
                 <Route path="/app" element={<Navigate to="/dashboard" replace />} />
-              </Routes>
-              <Toaster position="top-right" />
-            </AppLayout>
-          </Router>
+                </Routes>
+                <Toaster position="top-right" />
+              </AppLayout>
+            </Router>
+          </BlogProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

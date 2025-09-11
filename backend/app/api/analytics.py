@@ -4,8 +4,8 @@ from typing import List, Optional
 from pydantic import BaseModel
 from app.core.database import get_db
 from app.services.analytics_service import AnalyticsService
-from app.services.auth_service import AuthService
-from app.api.auth import oauth2_scheme
+from app.auth import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
@@ -19,17 +19,11 @@ class AnalyticsResponse(BaseModel):
 @router.get("/dashboard", response_model=AnalyticsResponse)
 async def get_dashboard_analytics(
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: User = Depends(get_current_user)
 ):
     """Get user dashboard analytics"""
-    auth_service = AuthService(db)
-    user = auth_service.get_current_user(token)
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
     analytics_service = AnalyticsService(db)
-    analytics = analytics_service.get_user_analytics(user.id)
+    analytics = analytics_service.get_user_analytics(current_user.id)
     
     return analytics
 
@@ -37,16 +31,10 @@ async def get_dashboard_analytics(
 async def export_analytics_pdf(
     analysis_ids: List[str],
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    current_user: User = Depends(get_current_user)
 ):
     """Export analysis results as PDF report"""
-    auth_service = AuthService(db)
-    user = auth_service.get_current_user(token)
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
     analytics_service = AnalyticsService(db)
-    pdf_data = await analytics_service.generate_pdf_report(user.id, analysis_ids)
+    pdf_data = await analytics_service.generate_pdf_report(current_user.id, analysis_ids)
     
     return {"pdf_url": pdf_data["url"], "download_link": pdf_data["download_link"]}

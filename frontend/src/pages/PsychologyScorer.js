@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Container, Paper, Typography, Button, Box, CircularProgress, Grid } from '@mui/material';
+import { Container, Paper, Typography, Button, Box, CircularProgress, Grid, Chip } from '@mui/material';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import apiService from '../services/apiService';
@@ -91,6 +91,110 @@ const PsychologyScorer = () => {
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
             🧠 Psychology Scoring Results
           </Typography>
+          
+          {/* Overall Psychology Score */}
+          {results.overall_score && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                📊 Overall Psychology Score
+              </Typography>
+              <Paper sx={{ p: 3, bgcolor: 'rgba(139, 92, 246, 0.05)' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                  <Typography variant="h3" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                    {results.overall_score}%
+                  </Typography>
+                  <Box>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {results.overall_score >= 80 ? '✅ Highly Persuasive' : 
+                       results.overall_score >= 60 ? '⚠️ Moderately Persuasive' : '❌ Needs More Psychology'}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Psychological persuasion effectiveness
+                    </Typography>
+                  </Box>
+                </Box>
+              </Paper>
+            </Box>
+          )}
+
+          {/* Psychology Scores Breakdown */}
+          {results.psychology_scores && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                🧙 Psychology Triggers Analysis
+              </Typography>
+              <Grid container spacing={2}>
+                {Object.entries(results.psychology_scores).map(([trigger, score]) => (
+                  <Grid item xs={12} sm={6} md={4} key={trigger}>
+                    <Paper sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
+                        {trigger.replace('_', ' ')}
+                      </Typography>
+                      <Typography variant="h6" color="primary.main">
+                        {score}%
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )}
+
+          {/* Emotional Triggers */}
+          {results.emotional_triggers && results.emotional_triggers.length > 0 && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                ❤️ Detected Emotional Triggers
+              </Typography>
+              <Paper sx={{ p: 3, bgcolor: 'rgba(236, 72, 153, 0.05)' }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {results.emotional_triggers.map((trigger, index) => (
+                    <Chip key={index} label={trigger} color="primary" variant="outlined" />
+                  ))}
+                </Box>
+              </Paper>
+            </Box>
+          )}
+
+          {/* Persuasion Techniques */}
+          {results.persuasion_techniques && results.persuasion_techniques.length > 0 && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                🎯 Persuasion Techniques Used
+              </Typography>
+              <Paper sx={{ p: 3, bgcolor: 'rgba(34, 197, 94, 0.05)' }}>
+                <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                  {results.persuasion_techniques.map((technique, index) => (
+                    <li key={index}>
+                      <Typography variant="body1" sx={{ mb: 1 }}>
+                        <strong>{technique.name}:</strong> {technique.description}
+                      </Typography>
+                    </li>
+                  ))}
+                </ul>
+              </Paper>
+            </Box>
+          )}
+
+          {/* Recommendations */}
+          {results.recommendations && results.recommendations.length > 0 && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                💡 Psychology Enhancement Recommendations
+              </Typography>
+              <Paper sx={{ p: 3, bgcolor: 'rgba(59, 130, 246, 0.05)' }}>
+                <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                  {results.recommendations.map((rec, index) => (
+                    <li key={index}>
+                      <Typography variant="body1" sx={{ mb: 1 }}>
+                        {rec}
+                      </Typography>
+                    </li>
+                  ))}
+                </ul>
+              </Paper>
+            </Box>
+          )}
         </Paper>
       )}
       

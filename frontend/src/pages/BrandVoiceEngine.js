@@ -114,6 +114,109 @@ const BrandVoiceEngine = () => {
           <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
             🎯 Brand Voice Alignment Results
           </Typography>
+          
+          {/* Overall Alignment Score */}
+          {results.alignment_score && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                📊 Brand Voice Alignment Score
+              </Typography>
+              <Paper sx={{ p: 3, bgcolor: 'rgba(6, 182, 212, 0.05)' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                  <Typography variant="h3" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                    {results.alignment_score}%
+                  </Typography>
+                  <Box>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {results.alignment_score >= 80 ? '✅ Excellent Match' : 
+                       results.alignment_score >= 60 ? '⚠️ Good Match' : '❌ Needs Improvement'}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Brand voice consistency rating
+                    </Typography>
+                  </Box>
+                </Box>
+              </Paper>
+            </Box>
+          )}
+
+          {/* Tone Analysis */}
+          {results.tone_analysis && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                🎨 Detected Tone Characteristics
+              </Typography>
+              <Grid container spacing={2}>
+                {Object.entries(results.tone_analysis).map(([trait, score]) => (
+                  <Grid item xs={12} sm={6} md={4} key={trait}>
+                    <Paper sx={{ p: 2, textAlign: 'center' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
+                        {trait.replace('_', ' ')}
+                      </Typography>
+                      <Typography variant="h6" color="primary.main">
+                        {score}%
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          )}
+
+          {/* Brand-Aligned Copy Suggestion */}
+          {results.suggested_copy && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                ✨ Brand-Aligned Copy Suggestions
+              </Typography>
+              <Paper sx={{ p: 3, bgcolor: 'rgba(34, 197, 94, 0.05)' }}>
+                {results.suggested_copy.headline && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>Headline:</Typography>
+                    <Typography variant="body1" sx={{ fontStyle: 'italic' }}>
+                      "{results.suggested_copy.headline}"
+                    </Typography>
+                  </Box>
+                )}
+                {results.suggested_copy.body_text && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>Body Text:</Typography>
+                    <Typography variant="body1" sx={{ fontStyle: 'italic' }}>
+                      "{results.suggested_copy.body_text}"
+                    </Typography>
+                  </Box>
+                )}
+                {results.suggested_copy.cta && (
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>CTA:</Typography>
+                    <Typography variant="body1" sx={{ fontStyle: 'italic' }}>
+                      "{results.suggested_copy.cta}"
+                    </Typography>
+                  </Box>
+                )}
+              </Paper>
+            </Box>
+          )}
+
+          {/* Brand Consistency Analysis */}
+          {results.brand_consistency && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                🔍 Brand Consistency Analysis
+              </Typography>
+              <Paper sx={{ p: 3, bgcolor: 'rgba(59, 130, 246, 0.05)' }}>
+                <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                  {results.brand_consistency.map((insight, index) => (
+                    <li key={index}>
+                      <Typography variant="body1" sx={{ mb: 1 }}>
+                        {insight}
+                      </Typography>
+                    </li>
+                  ))}
+                </ul>
+              </Paper>
+            </Box>
+          )}
         </Paper>
       )}
       

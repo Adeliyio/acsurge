@@ -19,7 +19,6 @@ import {
   Badge
 } from '@mui/material';
 import BrandLogo from './BrandLogo';
-import NotificationCenter from './NotificationCenter';
 import {
   Dashboard as DashboardIcon,
   Analytics as AnalyticsIcon,
@@ -47,7 +46,10 @@ import {
   SearchOff as ForensicsIcon,
   Psychology as PsychologyIcon,
   RecordVoiceOver as BrandVoiceIcon,
-  Gavel as LegalIcon
+  Gavel as LegalIcon,
+  // Shared workflow icons
+  Folder as ProjectsIcon,
+  PlayArrow as WorkflowIcon
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
@@ -68,8 +70,28 @@ const navigationSections = [
         badge: null
       },
       {
+        id: 'projects',
+        label: 'All Projects',
+        path: '/projects',
+        icon: ProjectsIcon,
+        badge: null
+      },
+      {
+        id: 'new-project',
+        label: 'Create Project',
+        path: '/project/new/workspace',
+        icon: WorkflowIcon,
+        badge: null
+      }
+    ]
+  },
+  {
+    id: 'legacy',
+    label: 'Legacy Tools',
+    items: [
+      {
         id: 'analyze',
-        label: 'Analyze Ad Copy',
+        label: 'Quick Analysis',
         path: '/analyze',
         icon: AnalyticsIcon,
         badge: null
@@ -85,63 +107,65 @@ const navigationSections = [
   },
   {
     id: 'ai-tools',
-    label: 'AI-Powered Tools',
+    label: 'Power Tools',
+    collapsible: true,
+    collapsed: true,
     items: [
       {
         id: 'compliance-checker',
         label: 'Compliance Checker',
         path: '/compliance-checker',
         icon: ComplianceIcon,
-        badge: 'New'
+        badge: null
       },
       {
         id: 'roi-generator',
         label: 'ROI Copy Generator',
         path: '/roi-generator',
         icon: ROIIcon,
-        badge: 'New'
+        badge: null
       },
       {
         id: 'ab-test-generator',
         label: 'A/B Test Generator',
         path: '/ab-test-generator',
         icon: ABTestIcon,
-        badge: 'New'
+        badge: null
       },
       {
         id: 'industry-optimizer',
         label: 'Industry Optimizer',
         path: '/industry-optimizer',
         icon: IndustryIcon,
-        badge: 'New'
+        badge: null
       },
       {
         id: 'performance-forensics',
         label: 'Performance Forensics',
         path: '/performance-forensics',
         icon: ForensicsIcon,
-        badge: 'New'
+        badge: null
       },
       {
         id: 'psychology-scorer',
         label: 'Psychology Scorer',
         path: '/psychology-scorer',
         icon: PsychologyIcon,
-        badge: 'New'
+        badge: null
       },
       {
         id: 'brand-voice-engine',
         label: 'Brand Voice Engine',
         path: '/brand-voice-engine',
         icon: BrandVoiceIcon,
-        badge: 'New'
+        badge: null
       },
       {
         id: 'legal-risk-scanner',
         label: 'Legal Risk Scanner',
         path: '/legal-risk-scanner',
         icon: LegalIcon,
-        badge: 'New'
+        badge: null
       }
     ]
   },
@@ -182,6 +206,9 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
   
   const [collapsed, setCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState({});
+  const [collapsedSections, setCollapsedSections] = useState({
+    'ai-tools': true, // Start with AI tools collapsed
+  });
 
   const handleToggleCollapse = () => {
     setCollapsed(!collapsed);
@@ -191,6 +218,13 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
     setExpandedItems(prev => ({
       ...prev,
       [itemId]: !prev[itemId]
+    }));
+  };
+
+  const handleToggleSection = (sectionId) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
     }));
   };
 
@@ -269,7 +303,17 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
           <Box key={section.id}>
             {/* Section Label (only if not collapsed) */}
             {!collapsed && (
-              <Box sx={{ px: 2, py: 1 }}>
+              <Box 
+                sx={{ 
+                  px: 2, 
+                  py: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: section.collapsible ? 'pointer' : 'default'
+                }}
+                onClick={section.collapsible ? () => handleToggleSection(section.id) : undefined}
+              >
                 <Typography 
                   variant="caption" 
                   sx={{ 
@@ -283,12 +327,21 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
                 >
                   {section.label}
                 </Typography>
+                {section.collapsible && (
+                  <IconButton
+                    size="small"
+                    sx={{ p: 0.25, color: 'text.secondary' }}
+                  >
+                    {collapsedSections[section.id] ? <ExpandMore fontSize="small" /> : <ExpandLess fontSize="small" />}
+                  </IconButton>
+                )}
               </Box>
             )}
             
             {/* Section Items */}
-            <List sx={{ px: 1, pb: 0 }}>
-              {section.items.map((item) => (
+            <Collapse in={!section.collapsible || !collapsedSections[section.id]} timeout="auto">
+              <List sx={{ px: 1, pb: 0 }}>
+                {section.items.map((item) => (
                 <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
                   <Tooltip title={collapsed ? item.label : ''} placement="right">
                     <ListItemButton
@@ -346,9 +399,10 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
                       )}
                     </ListItemButton>
                   </Tooltip>
-                </ListItem>
-              ))}
-            </List>
+                  </ListItem>
+                ))}
+              </List>
+            </Collapse>
             
             {/* Section Divider */}
             {sectionIndex < filteredNavSections.length - 1 && (
@@ -364,31 +418,6 @@ const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
         ))}
       </Box>
 
-      <Divider />
-
-      {/* Footer Actions */}
-      <Box sx={{ p: 1 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            px: collapsed ? 0 : 2,
-            py: 1
-          }}
-        >
-          {!collapsed && (
-            <Typography
-              variant="body2"
-              sx={{ mr: 'auto', fontSize: '0.875rem' }}
-            >
-              Notifications
-            </Typography>
-          )}
-          <NotificationCenter />
-        </Box>
-
-      </Box>
     </Box>
   );
 

@@ -20,6 +20,7 @@ import toast from 'react-hot-toast';
 import apiService from '../services/apiService';
 import { ErrorMessage } from '../components/ui';
 import CopyInputForm from '../components/shared/CopyInputForm';
+import EnhancedToolResults from '../components/shared/EnhancedToolResults';
 
 const ComplianceChecker = () => {
   const navigate = useNavigate();
@@ -230,78 +231,14 @@ const ComplianceChecker = () => {
 
       {/* Results Section */}
       {results && (
-        <Paper sx={{ p: 4 }}>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 3 }}>
-            📊 Compliance Report
-          </Typography>
-          
-          {/* Overall Status */}
-          <Box sx={{ mb: 4 }}>
-            <Alert 
-              severity={results.violations?.length > 0 ? 'warning' : 'success'} 
-              sx={{ mb: 2 }}
-            >
-              <Typography variant="h6">
-                {results.violations?.length > 0 
-                  ? `Found ${results.violations.length} compliance issues`
-                  : 'Your ad copy is compliant! ✅'
-                }
-              </Typography>
-            </Alert>
-          </Box>
-
-          {/* Violations List */}
-          {results.violations && results.violations.length > 0 && (
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                🚨 Policy Violations
-              </Typography>
-              {results.violations.map((violation, index) => (
-                <Paper key={index} sx={{ p: 3, mb: 2, bgcolor: 'rgba(244, 67, 54, 0.05)' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
-                    <Chip 
-                      label={violation.risk_level} 
-                      color={getRiskLevelColor(violation.risk_level)}
-                      size="small"
-                    />
-                    <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
-                      {violation.issue_type}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body1" sx={{ mb: 2 }}>
-                    <strong>Problem:</strong> {violation.description}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                    <strong>Flagged Text:</strong> "{violation.flagged_text}"
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: 'success.main' }}>
-                    <strong>Suggested Fix:</strong> {violation.suggestion}
-                  </Typography>
-                </Paper>
-              ))}
-            </Box>
-          )}
-
-          {/* Platform-Specific Tips */}
-          {results.platform_tips && (
-            <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                💡 Platform-Specific Tips
-              </Typography>
-              <Paper sx={{ p: 3, bgcolor: 'rgba(37, 99, 235, 0.05)' }}>
-                <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
-                  {results.platform_tips.map((tip, index) => (
-                    <li key={index}>
-                      <Typography variant="body1" sx={{ mb: 1 }}>
-                        {tip}
-                      </Typography>
-                    </li>
-                  ))}
-                </ul>
-              </Paper>
-            </Box>
-          )}
-        </Paper>
+        <EnhancedToolResults 
+          results={{
+            ...results,
+            recommendations: results.platform_tips
+          }} 
+          toolType="compliance" 
+          title="🛡️ Compliance Report"
+        />
       )}
       
       {/* Error Display */}
