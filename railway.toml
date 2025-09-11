@@ -2,13 +2,12 @@
 builder = "NIXPACKS"
 
 [build.env]
-# Tell Nixpacks to use production requirements file first, fallback to regular
-NIXPACKS_PYTHON_PACKAGE_FILE = "backend/requirements-production.txt"
+# Set Python version
+NIXPACKS_PYTHON_VERSION = "3.11"
 
 [deploy]
-# Use the backend directory as the working directory
-workingDirectory = "backend"
-startCommand = "gunicorn -c gunicorn-railway.conf.py main_production:app"
+# Change to backend directory and start the app
+startCommand = "cd backend && gunicorn -c gunicorn-railway.conf.py main_production:app"
 
 # Environment variables that need to be set in Railway dashboard
 # Copy these variable names to Railway dashboard and set appropriate values
