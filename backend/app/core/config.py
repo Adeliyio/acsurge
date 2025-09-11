@@ -12,14 +12,18 @@ CONFIG_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = CONFIG_DIR.parent.parent
 ENV_FILE = BACKEND_DIR / ".env"
 
-# Only load .env file in development (Railway/production uses environment variables directly)
-if os.environ.get('ENVIRONMENT') != 'production' and ENV_FILE.exists():
+# Load .env file if it exists (for local development)
+# Railway and other production platforms inject environment variables directly
+if ENV_FILE.exists():
     print(f"Loading .env file from {ENV_FILE}")
     load_dotenv(dotenv_path=ENV_FILE)
-elif os.environ.get('ENVIRONMENT') == 'production':
-    print("Production environment detected, using Railway environment variables")
 else:
-    print(f"Development environment: .env file not found at {ENV_FILE}")
+    print(f"No .env file found at {ENV_FILE} - using system environment variables")
+
+# Debug: Print environment detection
+print(f"Environment detection: ENVIRONMENT={os.environ.get('ENVIRONMENT', 'not_set')}")
+print(f"SECRET_KEY available: {'SECRET_KEY' in os.environ}")
+print(f"DATABASE_URL available: {'DATABASE_URL' in os.environ}")
 
 class Settings(BaseSettings):
     # Environment Configuration
@@ -59,6 +63,14 @@ class Settings(BaseSettings):
     
     # AI Services Configuration
     OPENAI_API_KEY: Optional[str] = Field(None, description="OpenAI API key")
+    
+    @validator('OPENAI_API_KEY', pre=True, always=True)
+    def get_openai_key(cls, v):
+        """Accept either OPENAI_API_KEY or OPEN_AI_KEY from environment"""
+        if v:
+            return v
+        # Fallback to OPEN_AI_KEY if OPENAI_API_KEY is not set
+        return os.environ.get('OPEN_AI_KEY')
     OPENAI_MAX_TOKENS: int = Field(default=2000, description="OpenAI max tokens per request")
     OPENAI_RATE_LIMIT: int = Field(default=100, description="OpenAI requests per minute")
     HUGGINGFACE_API_KEY: Optional[str] = Field(None, description="HuggingFace API key")
