@@ -1,20 +1,18 @@
-databases:
-  - name: adcopysurge-db
-    databaseName: adcopysurge
-    user: adcopysurge_user
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: adcopysurge-db
     plan: starter
     region: oregon
-    ipAllowList: []  # Allow all IPs (can be restricted later)
+    databaseName: adcopysurge
+    databaseUser: adcopysurge_user
 
-services:
-
-  # Redis Cache
+  # Redis Cache  
   - type: redis
     name: adcopysurge-redis
     plan: starter
     region: oregon
     maxmemoryPolicy: allkeys-lru
-    ipAllowList: []
 
   # Backend API Service
   - type: web
@@ -26,20 +24,9 @@ services:
     dockerContext: ./backend
     healthCheckPath: /health
     autoDeploy: true
-    repo: https://github.com/Adeliyio/acsurge  # Your actual repo
+    repo: https://github.com/Adeliyio/acsurge
     branch: main
     envVars:
-      # Database & Redis - Auto-injected by Render
-      - key: DATABASE_URL
-        fromDatabase:
-          name: adcopysurge-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: adcopysurge-redis
-          type: redis
-          property: connectionString
-      
       # Application Configuration
       - key: ENVIRONMENT
         value: production
@@ -52,69 +39,43 @@ services:
       - key: APP_VERSION
         value: 1.0.0
       
-      # Security - Set these in Render Dashboard
+      # Security - Set these in Render Dashboard manually
       - key: SECRET_KEY
-        sync: false  # Must be set manually in dashboard
+        generateValue: true
       - key: ALGORITHM
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 60
       
-      # Supabase Configuration - Set these in Render Dashboard
-      - key: REACT_APP_SUPABASE_URL
-        sync: false
-      - key: REACT_APP_SUPABASE_ANON_KEY
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
-      - key: SUPABASE_JWT_SECRET
-        sync: false
-      
-      # AI Services - Set these in Render Dashboard
-      - key: OPENAI_API_KEY
-        sync: false
+      # AI Services Configuration
       - key: OPENAI_MAX_TOKENS
         value: 2000
       - key: OPENAI_RATE_LIMIT
         value: 100
-      - key: HUGGINGFACE_API_KEY
-        sync: false
       
-      # CORS Configuration
+      # CORS Configuration - Update with your actual URLs
       - key: CORS_ORIGINS
         value: https://adcopysurge-frontend.onrender.com,http://localhost:3000,http://127.0.0.1:3000
       - key: ALLOWED_HOSTS
         value: adcopysurge-backend.onrender.com,*.onrender.com,localhost,127.0.0.1
       
-      # Email Configuration - Set these in Render Dashboard  
+      # Email Configuration
       - key: SMTP_SERVER
         value: smtp.gmail.com
       - key: SMTP_PORT
         value: 587
-      - key: SMTP_USERNAME
-        sync: false
-      - key: SMTP_PASSWORD
-        sync: false
       - key: MAIL_FROM
         value: noreply@adcopysurge.com
       - key: MAIL_FROM_NAME
         value: AdCopySurge
       
-      # Paddle Billing Configuration - Set these in Render Dashboard
-      - key: PADDLE_VENDOR_ID
-        sync: false
-      - key: PADDLE_API_KEY
-        sync: false
-      - key: PADDLE_WEBHOOK_SECRET
-        sync: false
+      # Paddle Configuration
       - key: PADDLE_ENVIRONMENT
         value: production
       - key: PADDLE_API_URL
         value: https://vendors.paddle.com/api
       
-      # Monitoring - Set these in Render Dashboard
-      - key: SENTRY_DSN
-        sync: false
+      # Monitoring
       - key: SENTRY_ENVIRONMENT
         value: production
       - key: SENTRY_TRACES_SAMPLE_RATE
@@ -151,12 +112,12 @@ services:
         value: 500
 
   # Frontend Static Site
-  - type: static_site
+  - type: static
     name: adcopysurge-frontend
-    repo: https://github.com/Adeliyio/acsurge  # Your actual repo
+    repo: https://github.com/Adeliyio/acsurge
     branch: main
     buildCommand: cd frontend && npm ci && npm run build
-    staticPublishPath: ./frontend/build
+    publishPath: ./frontend/build
     pullRequestPreviewsEnabled: true
     autoDeploy: true
     headers:
@@ -176,10 +137,5 @@ services:
     envVars:
       - key: REACT_APP_API_BASE_URL
         value: https://adcopysurge-backend.onrender.com
-      - key: REACT_APP_SUPABASE_URL
-        sync: false  # Same as backend
-      - key: REACT_APP_SUPABASE_ANON_KEY
-        sync: false  # Same as backend
       - key: NODE_ENV
         value: production
-
