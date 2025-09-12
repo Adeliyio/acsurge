@@ -12,6 +12,10 @@ kill_timeout = "10s"
 [build]
   dockerfile = "Dockerfile.fly"
   builder = "dockerfile"
+  
+# Explicitly disable buildpacks
+[build.args]
+  BUILDPACK_DISABLE = "true"
 
 [deploy]
   release_command = "python -m alembic upgrade head"

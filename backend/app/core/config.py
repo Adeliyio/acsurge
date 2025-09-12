@@ -248,6 +248,37 @@ class Settings(BaseSettings):
                 frontend_url = f"https://{frontend_app}.fly.dev"
                 if frontend_url not in origins:
                     origins.append(frontend_url)
+        
+        # Add common Netlify patterns for frontend deployment
+        netlify_patterns = [
+            "https://*.netlify.app",
+            "https://*.netlify.com",
+            "https://adcopysurge.netlify.app",
+            "https://adcopysurge-frontend.netlify.app"
+        ]
+        
+        # Check if we have specific Netlify URL set in environment
+        netlify_url = os.getenv('NETLIFY_URL') or os.getenv('REACT_APP_NETLIFY_URL')
+        if netlify_url:
+            if not netlify_url.startswith('http'):
+                netlify_url = f"https://{netlify_url}"
+            if netlify_url not in origins:
+                origins.append(netlify_url)
+        
+        # Add common patterns for production use
+        for pattern in netlify_patterns:
+            if pattern not in origins:
+                origins.append(pattern)
+                
+        # Add custom domains that might be used
+        custom_domains = [
+            "https://app.adcopysurge.com",
+            "https://adcopysurge.com"
+        ]
+        
+        for domain in custom_domains:
+            if domain not in origins:
+                origins.append(domain)
             
         return origins
     

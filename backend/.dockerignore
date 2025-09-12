@@ -106,6 +106,15 @@ render.yaml
 vercel.json
 netlify.toml
 
+# Buildpack detection prevention
+.tool-versions
+.mise.toml
+.mise.local.toml
+.python-version
+.nvmrc
+runtime.txt
+requirements.txt
+
 # Node.js (if any)
 node_modules/
 npm-debug.log*
