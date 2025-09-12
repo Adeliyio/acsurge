@@ -1,37 +1,38 @@
-# Root .dockerignore to prevent buildpack detection
-# This ensures Fly.io uses Dockerfile from backend/ directory
+# Exclude everything by default, then include only what we need
+*
 
-# Buildpack detection files
-.tool-versions
-.mise.toml
-.mise.local.toml
-.python-version
-.node-version
-.nvmrc
-runtime.txt
-requirements.txt
-package.json
-Pipfile
-pyproject.toml
-setup.py
-environment.yml
-
-# Only keep the backend directory
+# Include only backend source code
 !backend/
+
+# Exclude development files from backend
+backend/.env*
 backend/.git/
-backend/.env
 backend/*.log
+backend/logs/
+backend/.venv/
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/**/*.pyc
+backend/.pytest_cache/
+backend/node_modules/
+backend/*.sqlite
+backend/*.db
+backend/.DS_Store
+backend/Thumbs.db
 
-# Frontend (deployed separately to Netlify)
+# Exclude specific large directories
 frontend/
-
-# Documentation and config
-*.md
 docs/
+.git/
 .github/
 .vscode/
 .idea/
-
-# Git and CI
-.git/
-.gitignore
+node_modules/
+tests/
+scripts/
+content/
+database/
+deployment/
+infra/
