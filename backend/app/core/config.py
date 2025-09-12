@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     HOST: str = Field(default="127.0.0.1", description="Host to bind to")
     PORT: int = Field(default=8000, description="Port to bind to")
     
+    # Render-specific configuration
+    RENDER_EXTERNAL_HOSTNAME: Optional[str] = Field(None, description="Render external hostname")
+    RENDER_EXTERNAL_URL: Optional[str] = Field(None, description="Render external URL")
+    
     # Security Configuration
     SECRET_KEY: str = Field(..., min_length=32, description="Secret key for JWT tokens")
     ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
@@ -133,8 +137,34 @@ class Settings(BaseSettings):
     @validator('ALLOWED_HOSTS', pre=True)
     def parse_allowed_hosts(cls, v):
         if isinstance(v, str):
-            return [host.strip() for host in v.split(',')]
-        return v
+            hosts = [host.strip() for host in v.split(',')]
+        else:
+            hosts = v
+        
+        # Add Render domains if detected
+        render_url = os.getenv('RENDER_EXTERNAL_URL')
+        if render_url:
+            # Extract hostname from full URL
+            if render_url.startswith('http'):
+                from urllib.parse import urlparse
+                hostname = urlparse(render_url).hostname
+                if hostname and hostname not in hosts:
+                    hosts.append(hostname)
+            else:
+                if render_url not in hosts:
+                    hosts.append(render_url)
+        
+        render_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+        if render_hostname and render_hostname not in hosts:
+            hosts.append(render_hostname)
+        
+        # Add common Render patterns
+        if os.getenv('RENDER_EXTERNAL_URL') or os.getenv('RENDER_EXTERNAL_HOSTNAME'):
+            onrender_pattern = '*.onrender.com'
+            if onrender_pattern not in hosts:
+                hosts.append(onrender_pattern)
+        
+        return hosts
     
     @validator('DEBUG', pre=True)
     def set_debug_based_on_environment(cls, v, values):
@@ -144,9 +174,28 @@ class Settings(BaseSettings):
             return False
         return v
     
+    @validator('PORT', pre=True)
+    def set_port_from_env(cls, v):
+        """Set PORT from environment variable (Render sets this automatically)"""
+        port = os.getenv('PORT')
+        if port:
+            try:
+                return int(port)
+            except ValueError:
+                pass
+        return v
+    
+    @validator('HOST', pre=True)
+    def set_host_for_production(cls, v, values):
+        """Set HOST to 0.0.0.0 in production environments"""
+        environment = values.get('ENVIRONMENT', 'development')
+        if environment in ['production'] or os.getenv('RENDER_EXTERNAL_URL') or os.getenv('RAILWAY_ENVIRONMENT'):
+            return "0.0.0.0"
+        return v
+    
     @validator('CORS_ORIGINS', pre=True)
-    def ensure_railway_cors(cls, v):
-        """Automatically add Railway domains to CORS if detected"""
+    def ensure_render_and_railway_cors(cls, v):
+        """Automatically add Render and Railway domains to CORS if detected"""
         if isinstance(v, str):
             origins = [origin.strip() for origin in v.split(',')]
         else:
@@ -156,6 +205,23 @@ class Settings(BaseSettings):
         railway_url = os.getenv('RAILWAY_PUBLIC_DOMAIN')
         if railway_url and f"https://{railway_url}" not in origins:
             origins.append(f"https://{railway_url}")
+        
+        # Add Render domain if we're on Render
+        render_url = os.getenv('RENDER_EXTERNAL_URL')
+        if render_url:
+            # RENDER_EXTERNAL_URL includes the full URL, extract hostname
+            if render_url.startswith('http'):
+                if render_url not in origins:
+                    origins.append(render_url)
+            else:
+                # If it's just hostname, add https protocol
+                if f"https://{render_url}" not in origins:
+                    origins.append(f"https://{render_url}")
+        
+        # Also check for RENDER_EXTERNAL_HOSTNAME
+        render_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+        if render_hostname and f"https://{render_hostname}" not in origins:
+            origins.append(f"https://{render_hostname}")
             
         return origins
     
@@ -173,6 +239,16 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.ENVIRONMENT == "development"
+    
+    @property
+    def is_render(self) -> bool:
+        """Check if running on Render platform"""
+        return bool(os.getenv('RENDER_EXTERNAL_URL') or os.getenv('RENDER_EXTERNAL_HOSTNAME'))
+    
+    @property
+    def is_railway(self) -> bool:
+        """Check if running on Railway platform"""
+        return bool(os.getenv('RAILWAY_ENVIRONMENT'))
     
     class Config:
         # Use absolute path to .env file as fallback

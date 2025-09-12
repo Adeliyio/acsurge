@@ -4,7 +4,15 @@ import dataService from './dataService';
 
 class ApiService {
   constructor() {
-    this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+    // Support multiple environment variable names for different deployment platforms
+    this.baseURL = process.env.REACT_APP_API_URL || 
+                   process.env.REACT_APP_API_BASE_URL + '/api' || 
+                   'http://localhost:8000/api';
+    
+    // Clean up URL if it has double slashes
+    this.baseURL = this.baseURL.replace(/([^:])\/{2,}/g, '$1/');
+    
+    console.log('API Service initialized with baseURL:', this.baseURL);
     this.client = axios.create({
       baseURL: this.baseURL,
       timeout: 30000, // Increased timeout for AI processing

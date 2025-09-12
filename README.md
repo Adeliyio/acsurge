@@ -260,9 +260,15 @@ docker-compose -f docker-compose.prod.yml up -d
 ```
 
 ### Recommended Hosting Platforms
-- **Backend**: Railway, Heroku, DigitalOcean App Platform
-- **Frontend**: Vercel, Netlify, Cloudflare Pages
-- **Database**: Railway PostgreSQL, Heroku Postgres, AWS RDS
+- **Backend**: Render, Railway, Heroku, DigitalOcean App Platform
+- **Frontend**: Render Static Sites, Vercel, Netlify, Cloudflare Pages
+- **Database**: Render PostgreSQL, Railway PostgreSQL, Heroku Postgres, AWS RDS
+
+### Quick Deploy to Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/yourusername/adcopysurge)
+
+📖 **See [DEPLOY_RENDER.md](./DEPLOY_RENDER.md) for complete Render deployment guide.**
 
 ### Railway Deployment Troubleshooting
 
