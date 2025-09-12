@@ -37,9 +37,11 @@ class Settings(BaseSettings):
     HOST: str = Field(default="127.0.0.1", description="Host to bind to")
     PORT: int = Field(default=8000, description="Port to bind to")
     
-    # Render-specific configuration
+    # Platform-specific configuration
     RENDER_EXTERNAL_HOSTNAME: Optional[str] = Field(None, description="Render external hostname")
     RENDER_EXTERNAL_URL: Optional[str] = Field(None, description="Render external URL")
+    FLY_APP_NAME: Optional[str] = Field(None, description="Fly.io app name")
+    FLY_REGION: Optional[str] = Field(None, description="Fly.io region")
     
     # Security Configuration
     SECRET_KEY: str = Field(..., min_length=32, description="Secret key for JWT tokens")
@@ -164,6 +166,17 @@ class Settings(BaseSettings):
             if onrender_pattern not in hosts:
                 hosts.append(onrender_pattern)
         
+        # Add Fly.io domains if detected
+        fly_app_name = os.getenv('FLY_APP_NAME')
+        if fly_app_name:
+            fly_host = f"{fly_app_name}.fly.dev"
+            if fly_host not in hosts:
+                hosts.append(fly_host)
+            # Add wildcard Fly.io pattern
+            fly_pattern = '*.fly.dev'
+            if fly_pattern not in hosts:
+                hosts.append(fly_pattern)
+        
         return hosts
     
     @validator('DEBUG', pre=True)
@@ -194,8 +207,8 @@ class Settings(BaseSettings):
         return v
     
     @validator('CORS_ORIGINS', pre=True)
-    def ensure_render_and_railway_cors(cls, v):
-        """Automatically add Render and Railway domains to CORS if detected"""
+    def ensure_platform_cors(cls, v):
+        """Automatically add platform domains to CORS if detected"""
         if isinstance(v, str):
             origins = [origin.strip() for origin in v.split(',')]
         else:
@@ -222,6 +235,19 @@ class Settings(BaseSettings):
         render_hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME')
         if render_hostname and f"https://{render_hostname}" not in origins:
             origins.append(f"https://{render_hostname}")
+        
+        # Add Fly.io domain if we're on Fly.io
+        fly_app_name = os.getenv('FLY_APP_NAME')
+        if fly_app_name:
+            fly_url = f"https://{fly_app_name}.fly.dev"
+            if fly_url not in origins:
+                origins.append(fly_url)
+            # Also add frontend if backend
+            if 'backend' in fly_app_name.lower():
+                frontend_app = fly_app_name.replace('backend', 'frontend')
+                frontend_url = f"https://{frontend_app}.fly.dev"
+                if frontend_url not in origins:
+                    origins.append(frontend_url)
             
         return origins
     
@@ -249,6 +275,11 @@ class Settings(BaseSettings):
     def is_railway(self) -> bool:
         """Check if running on Railway platform"""
         return bool(os.getenv('RAILWAY_ENVIRONMENT'))
+    
+    @property
+    def is_fly(self) -> bool:
+        """Check if running on Fly.io platform"""
+        return bool(os.getenv('FLY_APP_NAME') or os.getenv('FLY_REGION'))
     
     class Config:
         # Use absolute path to .env file as fallback

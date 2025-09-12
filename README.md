@@ -260,15 +260,22 @@ docker-compose -f docker-compose.prod.yml up -d
 ```
 
 ### Recommended Hosting Platforms
-- **Backend**: Render, Railway, Heroku, DigitalOcean App Platform
-- **Frontend**: Render Static Sites, Vercel, Netlify, Cloudflare Pages
-- **Database**: Render PostgreSQL, Railway PostgreSQL, Heroku Postgres, AWS RDS
+- **Backend**: Fly.io, Railway, Render, Heroku, DigitalOcean App Platform
+- **Frontend**: Fly.io, Vercel, Netlify, Cloudflare Pages
+- **Database**: Fly.io PostgreSQL, Railway PostgreSQL, Heroku Postgres, AWS RDS
 
-### Quick Deploy to Render
+### Quick Deploy to Fly.io
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/yourusername/adcopysurge)
+🚀 **Deploy to Fly.io - Developer-friendly with generous free tier!**
 
-📖 **See [DEPLOY_RENDER.md](./DEPLOY_RENDER.md) for complete Render deployment guide.**
+📖 **See [DEPLOY_FLY.md](./DEPLOY_FLY.md) for complete Fly.io deployment guide.**
+
+```bash
+# Quick start commands
+fly auth login
+cd backend && fly launch
+cd ../frontend && fly launch
+```
 
 ### Railway Deployment Troubleshooting
 
