@@ -49,10 +49,11 @@ if ($confirmation -ne 'y' -and $confirmation -ne 'Y') {
 
 Write-Host "`n🔨 Starting deployment..." -ForegroundColor Blue
 
-# Method 1: Try with explicit dockerfile flag
+# Method 1: Try with explicit dockerfile flag and aggressive settings
 Write-Host "📦 Attempting deployment with explicit Docker flags..." -ForegroundColor Blue
 try {
-    flyctl deploy --dockerfile Dockerfile.fly --strategy=immediate --no-cache
+    # Nuclear option: Force Docker with all possible flags
+    flyctl deploy --dockerfile Dockerfile.fly --strategy=immediate --no-cache --build-arg BUILDPACK_DISABLE=true --ignorefile .flyignore
     Write-Host "✅ Deployment successful!" -ForegroundColor Green
     
     Write-Host "`n📊 Checking deployment status..." -ForegroundColor Blue

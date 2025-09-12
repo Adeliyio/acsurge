@@ -1,4 +1,0 @@
-# This file is for Railway/Nixpacks detection only
-# Actual requirements are in backend/requirements-production.txt
-# Install backend dependencies
--r backend/requirements-production.txt
