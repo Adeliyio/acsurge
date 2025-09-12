@@ -1,12 +1,11 @@
-services:
-  # PostgreSQL Database
-  - type: pserv
-    name: adcopysurge-db
-    plan: starter
-    region: oregon
+databases:
+  - name: adcopysurge-db
     databaseName: adcopysurge
-    databaseUser: adcopysurge_user
+    user: adcopysurge_user
+    region: oregon
+    plan: starter
 
+services:
   # Redis Cache  
   - type: redis
     name: adcopysurge-redis
@@ -112,12 +111,13 @@ services:
         value: 500
 
   # Frontend Static Site
-  - type: static
+  - type: web
     name: adcopysurge-frontend
+    env: static
     repo: https://github.com/Adeliyio/acsurge
     branch: main
     buildCommand: cd frontend && npm ci && npm run build
-    publishPath: ./frontend/build
+    staticPublishPath: ./frontend/build
     pullRequestPreviewsEnabled: true
     autoDeploy: true
     headers:
