@@ -4,6 +4,7 @@ databases:
     user: adcopysurge_user
     region: oregon
     plan: starter
+    ipAllowList: []  # Allow access from all Render services
 
 services:
   # Redis Cache  
@@ -12,6 +13,7 @@ services:
     plan: starter
     region: oregon
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []  # Allow access from all Render services
 
   # Backend API Service
   - type: web
