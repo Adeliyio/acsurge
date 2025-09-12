@@ -28,6 +28,11 @@ def test_database_connection(engine):
         raise
 
 try:
+    # Check if DATABASE_URL is available
+    if not settings.DATABASE_URL:
+        logger.warning("DATABASE_URL not set - database will not be available")
+        raise ValueError("DATABASE_URL is required")
+    
     # Sync engine for compatibility with existing code
     sync_database_url = settings.DATABASE_URL
     if sync_database_url.startswith("postgresql://"):
@@ -58,7 +63,7 @@ try:
     
     # Async engine for async endpoints (future-proofing)
     async_database_url = settings.DATABASE_URL
-    if async_database_url.startswith("postgresql://"):
+    if async_database_url and async_database_url.startswith("postgresql://"):
         async_database_url = async_database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     
     async_engine = create_async_engine(
@@ -77,17 +82,14 @@ try:
     )
     
 except Exception as e:
-    # In development without PostgreSQL, create dummy engines for imports
-    if os.getenv("ENVIRONMENT", "development") == "development":
-        print(f"⚠️ Database engine creation failed (expected in dev): {e}")
-        engine = None
-        async_engine = None
-        SessionLocal = None
-        AsyncSessionLocal = None
-    else:
-        # In production, this should not fail
-        print(f"❌ Database connection failed in production: {e}")
-        raise e
+    # Handle database connection issues gracefully
+    logger.warning(f"Database engine creation failed: {e}")
+    print(f"⚠️ Database not available: {e}")
+    print("Application will continue without database functionality")
+    engine = None
+    async_engine = None
+    SessionLocal = None
+    AsyncSessionLocal = None
 
 Base = declarative_base()
 

@@ -46,8 +46,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = Field(default="HS256", description="JWT algorithm")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60, description="JWT token expiration in minutes")
     
-    # Database Configuration
-    DATABASE_URL: str = Field(..., description="PostgreSQL database URL")
+    # Database Configuration  
+    DATABASE_URL: Optional[str] = Field(None, description="PostgreSQL database URL")
     
     # Supabase Configuration  
     REACT_APP_SUPABASE_URL: Optional[str] = Field(None, description="Supabase project URL")
