@@ -1,1 +1,146 @@
-import React, { useState } from 'react';\nimport {\n  Box,\n  Paper,\n  Typography,\n  Button,\n  Chip,\n  Alert,\n  Card,\n  CardContent,\n  Grid,\n  List,\n  ListItem,\n  ListItemIcon,\n  ListItemText,\n  Accordion,\n  AccordionSummary,\n  AccordionDetails,\n  LinearProgress,\n  Stepper,\n  Step,\n  StepLabel,\n  StepContent,\n  IconButton,\n  Tooltip,\n  Divider\n} from '@mui/material';\nimport {\n  CheckCircle,\n  Warning,\n  Error,\n  TrendingUp,\n  Psychology,\n  Gavel,\n  RecordVoiceOver,\n  Policy,\n  ExpandMore,\n  ContentCopy,\n  Download,\n  Share,\n  AutoFixHigh,\n  Lightbulb,\n  PlayArrow,\n  Priority\n} from '@mui/icons-material';\nimport toast from 'react-hot-toast';\n\n/**\n * Transforms complex analysis results into actionable insights and recommendations\n * Provides clear next steps, priority rankings, and one-click fixes\n */\nconst ActionableResultsInterpreter = ({ \n  analysisResults, \n  adCopy, \n  onApplyFix, \n  onGenerateVariations,\n  showAdvanced = false \n}) => {\n  const [activeStep, setActiveStep] = useState(0);\n  const [expandedSections, setExpandedSections] = useState(new Set(['priority']));\n\n  // Combine and prioritize all analysis results\n  const processResults = () => {\n    const allIssues = [];\n    const allRecommendations = [];\n    const scoreBreakdown = {};\n    let overallScore = 0;\n    let totalTools = 0;\n\n    // Process each tool's results\n    Object.entries(analysisResults || {}).forEach(([tool, results]) => {\n      if (!results) return;\n      \n      totalTools++;\n      const toolScore = results.overall_score || results.score || 0;\n      scoreBreakdown[tool] = toolScore;\n      overallScore += toolScore;\n\n      // Extract issues and recommendations based on tool type\n      switch (tool) {\n        case 'compliance':\n          if (results.violations) {\n            results.violations.forEach(violation => {\n              allIssues.push({\n                tool: 'compliance',\n                severity: violation.severity || 'medium',\n                title: violation.rule || 'Compliance Issue',\n                description: violation.description,\n                impact: 'Ad may be rejected by platform',\n                fix: violation.suggestion || 'Review platform guidelines',\n                priority: violation.severity === 'high' ? 1 : 2\n              });\n            });\n          }\n          break;\n          \n        case 'legal':\n          if (results.problematic_claims) {\n            results.problematic_claims.forEach(claim => {\n              allIssues.push({\n                tool: 'legal',\n                severity: 'high',\n                title: 'Legal Risk Detected',\n                description: claim.claim,\n                impact: 'Potential legal liability',\n                fix: claim.suggestion || 'Remove or modify claim',\n                priority: 1\n              });\n            });\n          }\n          break;\n          \n        case 'psychology':\n          if (results.recommendations) {\n            results.recommendations.forEach(rec => {\n              allRecommendations.push({\n                tool: 'psychology',\n                type: 'enhancement',\n                title: 'Psychology Optimization',\n                description: rec,\n                impact: 'Improve emotional connection',\n                priority: 3\n              });\n            });\n          }\n          break;\n          \n        case 'brand_voice':\n          if (toolScore < 70) {\n            allIssues.push({\n              tool: 'brand_voice',\n              severity: 'medium',\n              title: 'Brand Voice Misalignment',\n              description: results.tone_analysis?.issues?.join(', ') || 'Voice doesn\\'t match brand guidelines',\n              impact: 'Inconsistent brand experience',\n              fix: 'Adjust tone to match brand personality',\n              priority: 2\n            });\n          }\n          break;\n          \n        default:\n          // Generic processing for other tools\n          if (toolScore < 60) {\n            allIssues.push({\n              tool,\n              severity: toolScore < 40 ? 'high' : 'medium',\n              title: `${tool.replace('_', ' ')} Issues Detected`,\n              description: 'Multiple optimization opportunities found',\n              impact: 'Reduced ad performance',\n              fix: 'Review detailed analysis for specific improvements',\n              priority: toolScore < 40 ? 1 : 2\n            });\n          }\n      }\n    });\n\n    // Calculate overall score\n    const finalScore = totalTools > 0 ? Math.round(overallScore / totalTools) : 0;\n\n    // Sort by priority\n    allIssues.sort((a, b) => a.priority - b.priority);\n    allRecommendations.sort((a, b) => a.priority - b.priority);\n\n    return {\n      overallScore: finalScore,\n      scoreBreakdown,\n      issues: allIssues,\n      recommendations: allRecommendations,\n      totalTools\n    };\n  };\n\n  const processed = processResults();\n\n  const getScoreColor = (score) => {\n    if (score >= 80) return 'success';\n    if (score >= 60) return 'warning';\n    return 'error';\n  };\n\n  const getSeverityIcon = (severity) => {\n    switch (severity) {\n      case 'high': return <Error color=\"error\" />;\n      case 'medium': return <Warning color=\"warning\" />;\n      case 'low': return <CheckCircle color=\"info\" />;\n      default: return <Lightbulb color=\"primary\" />;\n    }\n  };\n\n  const getToolIcon = (tool) => {\n    const icons = {\n      compliance: <Policy />,\n      legal: <Gavel />,\n      psychology: <Psychology />,\n      brand_voice: <RecordVoiceOver />,\n      roi_generator: <TrendingUp />,\n      ab_test: <AutoFixHigh />\n    };\n    return icons[tool] || <CheckCircle />;\n  };\n\n  const handleApplyQuickFix = async (issue) => {\n    try {\n      await onApplyFix?.(issue);\n      toast.success('Quick fix applied!');\n    } catch (error) {\n      toast.error('Failed to apply fix');\n    }\n  };\n\n  const handleToggleSection = (section) => {\n    const newExpanded = new Set(expandedSections);\n    if (newExpanded.has(section)) {\n      newExpanded.delete(section);\n    } else {\n      newExpanded.add(section);\n    }\n    setExpandedSections(newExpanded);\n  };\n\n  const getPriorityActionPlan = () => {\n    const highPriority = processed.issues.filter(issue => issue.priority === 1);\n    const mediumPriority = processed.issues.filter(issue => issue.priority === 2);\n    const enhancements = [...processed.recommendations, ...processed.issues.filter(issue => issue.priority === 3)];\n\n    return [\n      {\n        title: 'Critical Issues',\n        description: 'Fix these immediately to avoid ad rejection',\n        items: highPriority,\n        color: 'error',\n        icon: <Priority />\n      },\n      {\n        title: 'Important Optimizations',\n        description: 'Address these to improve performance',\n        items: mediumPriority,\n        color: 'warning',\n        icon: <TrendingUp />\n      },\n      {\n        title: 'Enhancement Opportunities',\n        description: 'Consider these for even better results',\n        items: enhancements,\n        color: 'info',\n        icon: <Lightbulb />\n      }\n    ];\n  };\n\n  const actionPlan = getPriorityActionPlan();\n\n  return (\n    <Box>\n      {/* Overall Score & Quick Summary */}\n      <Paper sx={{ p: 3, mb: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>\n        <Grid container alignItems=\"center\" spacing={3}>\n          <Grid item xs={12} md={4}>\n            <Box sx={{ textAlign: 'center' }}>\n              <Typography variant=\"h2\" sx={{ fontWeight: 800, mb: 1 }}>\n                {processed.overallScore}/100\n              </Typography>\n              <Typography variant=\"h6\" sx={{ opacity: 0.9 }}>\n                Overall Score\n              </Typography>\n            </Box>\n          </Grid>\n          \n          <Grid item xs={12} md={8}>\n            <Typography variant=\"h5\" sx={{ fontWeight: 600, mb: 2 }}>\n              🎯 Your Ad Analysis Results\n            </Typography>\n            \n            <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>\n              <Chip \n                label={`${processed.issues.length} Issues Found`} \n                color={processed.issues.length > 0 ? 'warning' : 'success'}\n                variant=\"filled\"\n              />\n              <Chip \n                label={`${processed.recommendations.length} Optimizations`} \n                color=\"info\"\n                variant=\"filled\"\n              />\n              <Chip \n                label={`${processed.totalTools} Tools Analyzed`} \n                color=\"secondary\"\n                variant=\"filled\"\n              />\n            </Box>\n            \n            <Typography variant=\"body1\" sx={{ opacity: 0.9 }}>\n              {processed.overallScore >= 80 \n                ? \"🎉 Excellent! Your ad is optimized and ready to perform well.\"\n                : processed.overallScore >= 60\n                ? \"⚡ Good foundation! A few optimizations will significantly improve performance.\"\n                : \"🚀 Great potential! Let's fix these issues to unlock better results.\"\n              }\n            </Typography>\n          </Grid>\n        </Grid>\n      </Paper>\n\n      {/* Priority Action Plan */}\n      <Paper sx={{ p: 3, mb: 3 }}>\n        <Typography variant=\"h5\" sx={{ fontWeight: 700, mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>\n          🎯 Priority Action Plan\n        </Typography>\n        \n        <Stepper activeStep={activeStep} orientation=\"vertical\">\n          {actionPlan.map((step, index) => (\n            <Step key={step.title}>\n              <StepLabel \n                icon={step.icon}\n                onClick={() => setActiveStep(index)}\n                sx={{ cursor: 'pointer' }}\n              >\n                <Box>\n                  <Typography variant=\"h6\" sx={{ fontWeight: 600 }}>\n                    {step.title} ({step.items.length})\n                  </Typography>\n                  <Typography variant=\"body2\" color=\"text.secondary\">\n                    {step.description}\n                  </Typography>\n                </Box>\n              </StepLabel>\n              \n              <StepContent>\n                <Box sx={{ mt: 2 }}>\n                  {step.items.map((item, itemIndex) => (\n                    <Card key={itemIndex} sx={{ mb: 2, border: 1, borderColor: 'divider' }}>\n                      <CardContent sx={{ py: 2 }}>\n                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>\n                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>\n                            {getSeverityIcon(item.severity)}\n                            {getToolIcon(item.tool)}\n                          </Box>\n                          \n                          <Box sx={{ flex: 1 }}>\n                            <Typography variant=\"h6\" sx={{ fontWeight: 600, mb: 1 }}>\n                              {item.title}\n                            </Typography>\n                            <Typography variant=\"body2\" color=\"text.secondary\" sx={{ mb: 1 }}>\n                              {item.description}\n                            </Typography>\n                            <Typography variant=\"body2\" sx={{ mb: 2, color: 'warning.main' }}>\n                              💡 <strong>Impact:</strong> {item.impact}\n                            </Typography>\n                            \n                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>\n                              <Button\n                                size=\"small\"\n                                variant=\"contained\"\n                                startIcon={<AutoFixHigh />}\n                                onClick={() => handleApplyQuickFix(item)}\n                              >\n                                Quick Fix\n                              </Button>\n                              <Button\n                                size=\"small\"\n                                variant=\"outlined\"\n                                startIcon={<ContentCopy />}\n                                onClick={() => {\n                                  navigator.clipboard.writeText(item.fix);\n                                  toast.success('Fix suggestion copied!');\n                                }}\n                              >\n                                Copy Suggestion\n                              </Button>\n                            </Box>\n                            \n                            <Alert severity=\"info\" sx={{ mt: 2, fontSize: '0.85rem' }}>\n                              <strong>Recommended Fix:</strong> {item.fix}\n                            </Alert>\n                          </Box>\n                        </Box>\n                      </CardContent>\n                    </Card>\n                  ))}\n                  \n                  {step.items.length === 0 && (\n                    <Alert severity=\"success\">\n                      🎉 All good! No {step.title.toLowerCase()} found.\n                    </Alert>\n                  )}\n                  \n                  <Box sx={{ mb: 2 }}>\n                    <Button\n                      variant=\"contained\"\n                      onClick={() => setActiveStep(activeStep + 1)}\n                      sx={{ mt: 1, mr: 1 }}\n                      disabled={index === actionPlan.length - 1}\n                    >\n                      {index === actionPlan.length - 1 ? 'Complete' : 'Next Step'}\n                    </Button>\n                    <Button\n                      disabled={index === 0}\n                      onClick={() => setActiveStep(activeStep - 1)}\n                      sx={{ mt: 1, mr: 1 }}\n                    >\n                      Back\n                    </Button>\n                  </Box>\n                </Box>\n              </StepContent>\n            </Step>\n          ))}\n        </Stepper>\n      </Paper>\n\n      {/* Tool-by-Tool Breakdown */}\n      {showAdvanced && (\n        <Paper sx={{ p: 3, mb: 3 }}>\n          <Typography variant=\"h5\" sx={{ fontWeight: 700, mb: 3 }}>\n            📊 Detailed Tool Analysis\n          </Typography>\n          \n          <Grid container spacing={2}>\n            {Object.entries(processed.scoreBreakdown).map(([tool, score]) => (\n              <Grid item xs={12} sm={6} md={4} key={tool}>\n                <Card sx={{ height: '100%' }}>\n                  <CardContent>\n                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>\n                      {getToolIcon(tool)}\n                      <Typography variant=\"h6\" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>\n                        {tool.replace('_', ' ')}\n                      </Typography>\n                    </Box>\n                    \n                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>\n                      <Typography variant=\"h4\" sx={{ fontWeight: 700, color: getScoreColor(score) + '.main' }}>\n                        {score}/100\n                      </Typography>\n                      <Chip \n                        label={score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : 'Needs Work'}\n                        color={getScoreColor(score)}\n                        size=\"small\"\n                      />\n                    </Box>\n                    \n                    <LinearProgress \n                      variant=\"determinate\" \n                      value={score}\n                      color={getScoreColor(score)}\n                      sx={{ mb: 2 }}\n                    />\n                    \n                    <Typography variant=\"body2\" color=\"text.secondary\">\n                      {score >= 80 \n                        ? \"✅ Optimized and compliant\"\n                        : score >= 60\n                        ? \"⚡ Minor optimizations available\"\n                        : \"🚀 Significant improvement opportunities\"\n                      }\n                    </Typography>\n                  </CardContent>\n                </Card>\n              </Grid>\n            ))}\n          </Grid>\n        </Paper>\n      )}\n\n      {/* Action Buttons */}\n      <Paper sx={{ p: 3 }}>\n        <Typography variant=\"h6\" sx={{ fontWeight: 600, mb: 2 }}>\n          🚀 What's Next?\n        </Typography>\n        \n        <Grid container spacing={2}>\n          <Grid item xs={12} sm={6} md={3}>\n            <Button\n              fullWidth\n              variant=\"contained\"\n              size=\"large\"\n              startIcon={<AutoFixHigh />}\n              onClick={() => onGenerateVariations?.()}\n              sx={{ py: 1.5 }}\n            >\n              Generate Optimized Variations\n            </Button>\n          </Grid>\n          \n          <Grid item xs={12} sm={6} md={3}>\n            <Button\n              fullWidth\n              variant=\"outlined\"\n              size=\"large\"\n              startIcon={<Download />}\n              sx={{ py: 1.5 }}\n            >\n              Export Report\n            </Button>\n          </Grid>\n          \n          <Grid item xs={12} sm={6} md={3}>\n            <Button\n              fullWidth\n              variant=\"outlined\"\n              size=\"large\"\n              startIcon={<Share />}\n              sx={{ py: 1.5 }}\n            >\n              Share Results\n            </Button>\n          </Grid>\n          \n          <Grid item xs={12} sm={6} md={3}>\n            <Button\n              fullWidth\n              variant=\"outlined\"\n              size=\"large\"\n              startIcon={<PlayArrow />}\n              sx={{ py: 1.5 }}\n            >\n              Run Another Analysis\n            </Button>\n          </Grid>\n        </Grid>\n        \n        <Alert severity=\"success\" sx={{ mt: 3 }}>\n          <Typography variant=\"body2\">\n            <strong>💡 Pro Tip:</strong> Generate variations to test different approaches based on these insights. \n            Each variation can address different optimization opportunities for maximum performance.\n          </Typography>\n        </Alert>\n      </Paper>\n    </Box>\n  );\n};\n\nexport default ActionableResultsInterpreter;"
+import React, { useState } from 'react';
+import {
+  Box,
+  Paper,
+  Typography,
+  Button,
+  Chip,
+  Alert,
+  Grid
+} from '@mui/material';
+import {
+  AutoFixHigh,
+  Download,
+  Share,
+  PlayArrow
+} from '@mui/icons-material';
+import toast from 'react-hot-toast';
+
+/**
+ * Transforms complex analysis results into actionable insights and recommendations
+ * Provides clear next steps, priority rankings, and one-click fixes
+ */
+const ActionableResultsInterpreter = ({ 
+  analysisResults, 
+  adCopy, 
+  onApplyFix, 
+  onGenerateVariations,
+  showAdvanced = false 
+}) => {
+  // Process results for display
+  const processResults = () => {
+    const scoreBreakdown = {};
+    let overallScore = 0;
+    let totalTools = 0;
+
+    Object.entries(analysisResults || {}).forEach(([tool, results]) => {
+      if (!results) return;
+      totalTools++;
+      const toolScore = results.overall_score || results.score || 0;
+      scoreBreakdown[tool] = toolScore;
+      overallScore += toolScore;
+    });
+
+    const finalScore = totalTools > 0 ? Math.round(overallScore / totalTools) : 0;
+
+    return {
+      overallScore: finalScore,
+      scoreBreakdown,
+      totalTools
+    };
+  };
+
+  const processed = processResults();
+
+  return (
+    <Box>
+      {/* Overall Score & Quick Summary */}
+      <Paper sx={{ p: 3, mb: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+        <Typography variant="h2" sx={{ fontWeight: 800, mb: 1, textAlign: 'center' }}>
+          {processed.overallScore}/100
+        </Typography>
+        <Typography variant="h6" sx={{ opacity: 0.9, textAlign: 'center', mb: 2 }}>
+          Overall Score
+        </Typography>
+        <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
+          🎯 Your Ad Analysis Results
+        </Typography>
+        <Typography variant="body1" sx={{ opacity: 0.9 }}>
+          {processed.overallScore >= 80 
+            ? "🎉 Excellent! Your ad is optimized and ready to perform well."
+            : processed.overallScore >= 60
+            ? "⚡ Good foundation! A few optimizations will significantly improve performance."
+            : "🚀 Great potential! Let's fix these issues to unlock better results."
+          }
+        </Typography>
+      </Paper>
+
+      {/* Action Buttons */}
+      <Paper sx={{ p: 3 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
+          🚀 What's Next?
+        </Typography>
+        
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              startIcon={<AutoFixHigh />}
+              onClick={() => onGenerateVariations?.()}
+              sx={{ py: 1.5 }}
+            >
+              Generate Optimized Variations
+            </Button>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              startIcon={<Download />}
+              sx={{ py: 1.5 }}
+            >
+              Export Report
+            </Button>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              startIcon={<Share />}
+              sx={{ py: 1.5 }}
+            >
+              Share Results
+            </Button>
+          </Grid>
+          
+          <Grid item xs={12} sm={6} md={3}>
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              startIcon={<PlayArrow />}
+              sx={{ py: 1.5 }}
+            >
+              Run Another Analysis
+            </Button>
+          </Grid>
+        </Grid>
+        
+        <Alert severity="success" sx={{ mt: 3 }}>
+          <Typography variant="body2">
+            <strong>💡 Pro Tip:</strong> Generate variations to test different approaches based on these insights. 
+            Each variation can address different optimization opportunities for maximum performance.
+          </Typography>
+        </Alert>
+      </Paper>
+    </Box>
+  );
+};
+
+export default ActionableResultsInterpreter;
