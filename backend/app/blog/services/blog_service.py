@@ -1,10 +1,21 @@
 import os
 import re
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-import frontmatter
-from slugify import slugify
+
+try:
+    import frontmatter
+except ImportError:
+    frontmatter = None
+
+try:
+    from slugify import slugify
+except ImportError:
+    def slugify(text: str) -> str:
+        """Fallback slugify function"""
+        return re.sub(r'[^a-zA-Z0-9-]', '-', text.lower()).strip('-')
 
 from ..models.blog_models import (
     BlogPost,
@@ -21,16 +32,81 @@ from ..models.blog_models import (
     ContentStats,
     BlogMetadata
 )
-from .markdown_processor import MarkdownProcessor
-from .search_service import SearchService
+
+try:
+    from .markdown_processor import MarkdownProcessor
+except ImportError:
+    MarkdownProcessor = None
+
+try:
+    from .search_service import SearchService
+except ImportError:
+    SearchService = None
+
+logger = logging.getLogger(__name__)
+
+
+class BlogServiceError(Exception):
+    """Blog service specific exception"""
+    pass
 
 
 class BlogService:
-    def __init__(self, content_dir: str = "content/blog"):
-        self.content_dir = Path(content_dir)
-        self.content_dir.mkdir(parents=True, exist_ok=True)
-        self.markdown_processor = MarkdownProcessor()
-        self.search_service = SearchService()
+    def __init__(self, content_dir: str = "content/blog", graceful_degradation: bool = True):
+        self.graceful_degradation = graceful_degradation
+        self.is_healthy = True
+        self.error_message = None
+        
+        try:
+            # Initialize content directory
+            self.content_dir = Path(content_dir)
+            try:
+                self.content_dir.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Blog content directory initialized: {self.content_dir}")
+            except PermissionError as e:
+                raise BlogServiceError(f"Permission denied creating content directory {self.content_dir}: {e}")
+            except OSError as e:
+                raise BlogServiceError(f"OS error creating content directory {self.content_dir}: {e}")
+            
+            # Initialize markdown processor
+            if MarkdownProcessor is None:
+                raise BlogServiceError("MarkdownProcessor not available - missing markdown dependencies")
+            
+            try:
+                self.markdown_processor = MarkdownProcessor()
+                logger.info("Markdown processor initialized successfully")
+            except Exception as e:
+                raise BlogServiceError(f"Failed to initialize MarkdownProcessor: {e}")
+            
+            # Initialize search service
+            if SearchService is None:
+                raise BlogServiceError("SearchService not available")
+            
+            try:
+                self.search_service = SearchService()
+                logger.info("Search service initialized successfully")
+            except Exception as e:
+                raise BlogServiceError(f"Failed to initialize SearchService: {e}")
+            
+            # Check for frontmatter dependency
+            if frontmatter is None:
+                raise BlogServiceError("python-frontmatter package not available")
+            
+            logger.info("BlogService initialized successfully")
+            
+        except BlogServiceError as e:
+            self.is_healthy = False
+            self.error_message = str(e)
+            
+            if self.graceful_degradation:
+                logger.warning(f"BlogService initialization failed, running in degraded mode: {e}")
+                # Set fallback services
+                self.content_dir = Path(content_dir)  # Still set the path
+                self.markdown_processor = None
+                self.search_service = None
+            else:
+                logger.error(f"BlogService initialization failed: {e}")
+                raise
         
     def _get_post_path(self, slug: str) -> Path:
         """Get the file path for a blog post by slug"""
@@ -170,6 +246,13 @@ class BlogService:
     
     def get_all_posts(self, status: Optional[PostStatus] = None, category: Optional[PostCategory] = None) -> List[BlogPostList]:
         """Get all blog posts with optional filtering"""
+        if not self.is_healthy and self.graceful_degradation:
+            logger.warning("BlogService unhealthy, returning empty posts list")
+            return self._get_empty_posts_list()
+        
+        if not self.is_healthy:
+            raise BlogServiceError(f"BlogService is unhealthy: {self.error_message}")
+        
         posts = []
         
         for file_path in self.content_dir.glob("*.md"):
@@ -206,6 +289,13 @@ class BlogService:
     
     def get_post_by_slug(self, slug: str) -> Optional[BlogPostDetail]:
         """Get a single blog post by slug with full details"""
+        if not self.is_healthy:
+            if self.graceful_degradation:
+                logger.warning(f"BlogService unhealthy, cannot retrieve post {slug}")
+                return None
+            else:
+                raise BlogServiceError(f"BlogService is unhealthy: {self.error_message}")
+        
         file_path = self._get_post_path(slug)
         blog_post = self._parse_markdown_file(file_path)
         
@@ -289,6 +379,17 @@ class BlogService:
     
     def search_posts(self, search_params: BlogPostSearch) -> BlogPostResponse:
         """Search blog posts"""
+        if not self.is_healthy and self.graceful_degradation:
+            logger.warning("BlogService unhealthy, returning empty search results")
+            return self._get_empty_response()
+        
+        if not self.is_healthy:
+            raise BlogServiceError(f"BlogService is unhealthy: {self.error_message}")
+        
+        if self.search_service is None:
+            logger.warning("SearchService not available, returning empty results")
+            return self._get_empty_response()
+            
         return self.search_service.search(search_params, self.get_all_posts())
     
     def _get_related_posts(self, current_post: BlogPost, limit: int = 3) -> List[BlogPostList]:
@@ -352,4 +453,32 @@ class BlogService:
             "linkedin": f"📈 {post.title}\n\n{post.excerpt}\n\nRead more: [LINK]\n\n#AdCopy #Marketing #DigitalAdvertising",
             "twitter": f"🔥 {post.title}\n\n{post.excerpt[:100]}...\n\n[LINK]\n\n#AdCopy #MarketingTips",
             "tiktok_script": f"Hook: Did you know {post.seo.primary_keyword} can increase your CTR by 300%?\n\nBody: {post.excerpt[:150]}\n\nCTA: Link in bio for the full guide!"
+        }
+    
+    def _get_empty_response(self) -> BlogPostResponse:
+        """Return empty blog response for degraded mode"""
+        return BlogPostResponse(
+            posts=[],
+            total=0,
+            limit=20,
+            offset=0,
+            has_more=False
+        )
+    
+    def _get_empty_posts_list(self) -> List[BlogPostList]:
+        """Return empty posts list for degraded mode"""
+        return []
+    
+    def get_health_status(self) -> Dict[str, Any]:
+        """Get health status of the blog service"""
+        return {
+            "healthy": self.is_healthy,
+            "error_message": self.error_message,
+            "graceful_degradation": self.graceful_degradation,
+            "content_dir_exists": self.content_dir.exists() if hasattr(self, 'content_dir') else False,
+            "dependencies": {
+                "frontmatter": frontmatter is not None,
+                "markdown_processor": MarkdownProcessor is not None,
+                "search_service": SearchService is not None
+            }
         }

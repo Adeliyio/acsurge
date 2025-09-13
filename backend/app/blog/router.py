@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from fastapi.responses import Response, PlainTextResponse
 from typing import List, Optional
 import os
+import logging
 
 from .models.blog_models import (
     BlogPostCreate,
@@ -13,17 +14,33 @@ from .models.blog_models import (
     PostStatus,
     PostCategory
 )
-from .services.blog_service import BlogService
+from .services.blog_service import BlogService, BlogServiceError
 from .services.seo_service import SEOService
 from ..auth import require_admin
 from ..models.user import User
+from ..core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Initialize router
 router = APIRouter()
 
-# Initialize services
-blog_service = BlogService()
-seo_service = SEOService()
+# Initialize services with settings
+try:
+    blog_service = BlogService(
+        content_dir=settings.BLOG_CONTENT_DIR,
+        graceful_degradation=settings.BLOG_GRACEFUL_DEGRADATION
+    )
+    seo_service = SEOService()
+    logger.info("Blog services initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize blog services: {e}")
+    # Create a placeholder service that will return empty responses
+    blog_service = BlogService(
+        content_dir="/tmp/empty_blog",
+        graceful_degradation=True
+    )
+    seo_service = None
 
 
 @router.get("/", response_model=BlogPostResponse)

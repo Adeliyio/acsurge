@@ -27,9 +27,18 @@ export const BlogProvider = ({ children }) => {
   });
 
   const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:8000/api';
+  const BLOG_ENABLED = process.env.REACT_APP_BLOG_ENABLED !== 'false';
 
   // API call helper
   const apiCall = useCallback(async (url, options = {}) => {
+    if (!BLOG_ENABLED) {
+      console.warn('Blog functionality is disabled');
+      // Return empty data structure based on endpoint
+      if (url.includes('/categories')) return [];
+      if (url.includes('/popular') || url.includes('/trending')) return [];
+      return { posts: [], total: 0, limit: 20, offset: 0, has_more: false };
+    }
+    
     try {
       const response = await axios({
         url: `${API_BASE}${url}`,
@@ -39,6 +48,14 @@ export const BlogProvider = ({ children }) => {
     } catch (error) {
       console.error(`API Error (${url}):`, error);
       
+      // Handle specific error cases
+      if (error.response?.status === 502) {
+        console.warn('Blog service temporarily unavailable (502), returning empty data');
+        if (url.includes('/categories')) return [];
+        if (url.includes('/popular') || url.includes('/trending')) return [];
+        return { posts: [], total: 0, limit: 20, offset: 0, has_more: false };
+      }
+      
       if (error.response?.data?.detail) {
         toast.error(error.response.data.detail);
       } else {
@@ -47,7 +64,7 @@ export const BlogProvider = ({ children }) => {
       
       throw error;
     }
-  }, [API_BASE]);
+  }, [API_BASE, BLOG_ENABLED]);
 
   // Fetch blog posts
   const fetchPosts = useCallback(async (params = {}) => {

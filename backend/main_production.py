@@ -217,6 +217,22 @@ async def kubernetes_health_check():
     else:
         health_status["checks"]["openai"] = "not_configured"
     
+    # Check Blog service (if enabled)
+    if settings.ENABLE_BLOG:
+        try:
+            from app.blog import router as blog_router
+            blog_health = blog_router.blog_service.get_health_status()
+            if blog_health["healthy"]:
+                health_status["checks"]["blog_service"] = "healthy"
+            else:
+                health_status["checks"]["blog_service"] = f"degraded: {blog_health['error_message']}"
+                # Blog degradation doesn't mark overall status as unhealthy
+        except Exception as e:
+            health_status["checks"]["blog_service"] = f"unhealthy: {str(e)}"
+            # Blog issues don't mark overall status as unhealthy
+    else:
+        health_status["checks"]["blog_service"] = "disabled"
+    
     status_code = 200 if health_status["status"] == "healthy" else 503
     return JSONResponse(content=health_status, status_code=status_code)
 
@@ -236,7 +252,18 @@ app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(ads.router, prefix="/api/ads", tags=["ad-analysis"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["subscriptions"])
-app.include_router(blog_router.router, prefix="/api/blog", tags=["blog"])
+
+# Include blog router if enabled
+if settings.ENABLE_BLOG:
+    try:
+        app.include_router(blog_router.router, prefix="/api/blog", tags=["blog"])
+        logger.info("Blog router included successfully")
+    except Exception as e:
+        logger.error(f"Failed to include blog router: {e}")
+        if not settings.BLOG_GRACEFUL_DEGRADATION:
+            raise
+else:
+    logger.info("Blog functionality disabled via settings")
 
 
 @app.get("/")
