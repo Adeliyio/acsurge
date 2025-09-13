@@ -58,6 +58,9 @@ import { AuthProvider, useAuth } from './services/authContext';
 
 // Blog
 import { BlogProvider } from './contexts/BlogContext';
+
+// Settings
+import { SettingsProvider } from './contexts/SettingsContext';
 import Blog from './pages/Blog';
 import BlogPost from './pages/BlogPost';
 import BlogCategory from './pages/BlogCategory';
@@ -408,9 +411,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <AuthProvider>
-          <BlogProvider>
-            <Router>
+        <SettingsProvider>
+          <AuthProvider>
+            <BlogProvider>
+              <Router>
               <AppLayout>
                 <Routes>
                 <Route path="/" element={<LandingPage />} />
@@ -560,9 +564,10 @@ function App() {
                 </Routes>
                 <Toaster position="top-right" />
               </AppLayout>
-            </Router>
-          </BlogProvider>
-        </AuthProvider>
+              </Router>
+            </BlogProvider>
+          </AuthProvider>
+        </SettingsProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

@@ -1,14 +1,52 @@
 import React from 'react';
-import { Card, CardContent, Chip, Typography, Grid, Box, Switch, FormControlLabel, Tooltip } from '@mui/material';
+import { 
+  Card, 
+  CardContent, 
+  Chip, 
+  Typography, 
+  Grid, 
+  Box, 
+  Switch, 
+  FormControlLabel, 
+  Tooltip, 
+  Collapse,
+  Fade 
+} from '@mui/material';
 import { AVAILABLE_TOOLS } from '../../constants/analysisTools';
+import { useSettings } from '../../contexts/SettingsContext';
 
 /**
  * AnalysisToolsSelector
  * Reusable selector for choosing which analysis tools to run.
+ * Now uses global settings context for advanced settings toggle
  * Expects react-hook-form props: control, watch, setValue
  */
-const AnalysisToolsSelector = ({ watch, setValue, showAdvancedSettings, setShowAdvancedSettings, title = 'Analysis Tools', subtitle }) => {
+const AnalysisToolsSelector = ({ 
+  watch, 
+  setValue, 
+  // Legacy props for backward compatibility (deprecated)
+  showAdvancedSettings: legacyShowAdvancedSettings, 
+  setShowAdvancedSettings: legacySetShowAdvancedSettings, 
+  title = 'Analysis Tools', 
+  subtitle 
+}) => {
   const selectedTools = watch('enabledTools') || [];
+  const { showAdvancedSettings, toggleAdvancedSettings } = useSettings();
+  
+  // Use settings context, but fallback to legacy props if provided for backward compatibility
+  const isAdvancedVisible = legacyShowAdvancedSettings !== undefined 
+    ? legacyShowAdvancedSettings 
+    : showAdvancedSettings;
+    
+  const handleAdvancedToggle = (checked) => {
+    if (legacySetShowAdvancedSettings) {
+      // Use legacy prop if provided
+      legacySetShowAdvancedSettings(checked);
+    } else {
+      // Use settings context
+      toggleAdvancedSettings();
+    }
+  };
 
   return (
     <Box>
@@ -19,11 +57,18 @@ const AnalysisToolsSelector = ({ watch, setValue, showAdvancedSettings, setShowA
         <FormControlLabel
           control={
             <Switch
-              checked={showAdvancedSettings}
-              onChange={(e) => setShowAdvancedSettings?.(e.target.checked)}
+              checked={isAdvancedVisible}
+              onChange={(e) => handleAdvancedToggle(e.target.checked)}
+              color="primary"
             />
           }
           label="Advanced Settings"
+          sx={{
+            '& .MuiFormControlLabel-label': {
+              fontSize: '0.875rem',
+              fontWeight: 500
+            }
+          }}
         />
       </Box>
 
@@ -138,21 +183,48 @@ const AnalysisToolsSelector = ({ watch, setValue, showAdvancedSettings, setShowA
         })}
       </Grid>
 
-      {showAdvancedSettings && (
-        <Box sx={{ mt: 3, pt: 3, borderTop: 1, borderColor: 'divider' }}>
-          <Tooltip title="Automatically run analysis after saving">
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={!!watch('autoAnalyze')}
-                  onChange={(e) => setValue('autoAnalyze', e.target.checked)}
+      <Collapse in={isAdvancedVisible} timeout={300}>
+        <Fade in={isAdvancedVisible} timeout={isAdvancedVisible ? 400 : 0}>
+          <Box sx={{ 
+            mt: 3, 
+            pt: 3, 
+            borderTop: 1, 
+            borderColor: 'divider',
+            bgcolor: 'rgba(37, 99, 235, 0.02)',
+            borderRadius: 2,
+            p: 2
+          }}>
+            <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: 'primary.main' }}>
+              ⚙️ Advanced Settings
+            </Typography>
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Tooltip title="Automatically run analysis after saving your project">
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={!!watch('autoAnalyze')}
+                      onChange={(e) => setValue('autoAnalyze', e.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label="Auto-run analysis when saving"
+                  sx={{
+                    '& .MuiFormControlLabel-label': {
+                      fontSize: '0.875rem'
+                    }
+                  }}
                 />
-              }
-              label="Auto-run analysis when saving"
-            />
-          </Tooltip>
-        </Box>
-      )}
+              </Tooltip>
+              
+              {/* Additional future settings can go here */}
+              <Typography variant="caption" color="text.secondary" sx={{ ml: 4 }}>
+                More advanced options will be available here in future updates.
+              </Typography>
+            </Box>
+          </Box>
+        </Fade>
+      </Collapse>
     </Box>
   );
 };

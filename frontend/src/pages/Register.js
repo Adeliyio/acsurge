@@ -37,9 +37,12 @@ const Register = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [isExistingUser, setIsExistingUser] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -80,6 +83,9 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccess(false);
+    setIsExistingUser(false);
+    setSubmitAttempted(true);
 
     // Basic validation
     if (formData.password !== formData.confirmPassword) {
@@ -89,6 +95,11 @@ const Register = () => {
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    if (passwordStrength < 50) {
+      setError('Please choose a stronger password (at least 50% strength)');
       return;
     }
 
@@ -103,12 +114,34 @@ const Register = () => {
       });
 
       if (result.success) {
-        navigate('/dashboard');
+        setSuccess(true);
+        // Navigate to dashboard after a brief success message
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2000);
       } else {
-        setError(result.error || 'Registration failed');
+        const errorMessage = result.error || 'Registration failed';
+        
+        // Check for specific error patterns
+        if (errorMessage.toLowerCase().includes('already registered') || 
+            errorMessage.toLowerCase().includes('already exists') ||
+            errorMessage.toLowerCase().includes('user already registered')) {
+          setIsExistingUser(true);
+          setError('An account with this email already exists.');
+        } else if (errorMessage.toLowerCase().includes('email') && 
+                   errorMessage.toLowerCase().includes('invalid')) {
+          setError('Please enter a valid email address.');
+        } else if (errorMessage.toLowerCase().includes('password') && 
+                   (errorMessage.toLowerCase().includes('weak') || 
+                    errorMessage.toLowerCase().includes('short'))) {
+          setError('Password must be at least 6 characters long.');
+        } else {
+          setError(errorMessage);
+        }
       }
     } catch (err) {
-      setError('An unexpected error occurred');
+      console.error('Registration error:', err);
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -161,9 +194,50 @@ const Register = () => {
         </Typography>
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
+      {/* Success Message */}
+      {success && (
+        <Alert 
+          severity="success" 
+          sx={{ mb: 2, animation: 'fadeIn 0.3s ease-in' }}
+          icon={<PersonAdd />}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+            Account created successfully! 🎉
+          </Typography>
+          <Typography variant="body2">
+            Redirecting you to your dashboard...
+          </Typography>
+        </Alert>
+      )}
+      
+      {/* Error Message with Contextual Help */}
+      {error && !success && (
+        <Alert 
+          severity={isExistingUser ? 'info' : 'error'} 
+          sx={{ mb: 2 }}
+          action={
+            isExistingUser ? (
+              <Button 
+                component={Link} 
+                to="/login" 
+                size="small" 
+                variant="contained"
+                color="primary"
+                sx={{ textTransform: 'none' }}
+              >
+                Sign In
+              </Button>
+            ) : null
+          }
+        >
+          <Typography variant="body2" sx={{ fontWeight: 600, mb: isExistingUser ? 1 : 0 }}>
+            {error}
+          </Typography>
+          {isExistingUser && (
+            <Typography variant="body2" color="text.secondary">
+              Click "Sign In" to access your existing account instead.
+            </Typography>
+          )}
         </Alert>
       )}
 

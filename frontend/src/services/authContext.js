@@ -3,6 +3,83 @@ import toast from 'react-hot-toast';
 import { supabase, signIn, signUp, signOut, getCurrentUser } from '../lib/supabaseClient';
 import { runAuthDiagnostics } from '../utils/authDebug';
 
+// Global request interceptor for handling 401 errors
+let authInterceptor = null;
+
+// Enhanced authentication utilities
+const AuthUtils = {
+  // Check if user is online
+  isOnline: () => navigator.onLine,
+  
+  // Refresh session with retry logic
+  refreshSession: async (retries = 2) => {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        console.log(`🔄 Attempting session refresh (attempt ${i + 1}/${retries + 1})...`);
+        const { data, error } = await supabase.auth.refreshSession();
+        
+        if (error) {
+          console.warn(`⚠️ Session refresh attempt ${i + 1} failed:`, error.message);
+          if (i === retries) throw error;
+          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Progressive delay
+          continue;
+        }
+        
+        console.log('✅ Session refreshed successfully');
+        return data;
+      } catch (error) {
+        console.error(`❌ Session refresh attempt ${i + 1} failed:`, error);
+        if (i === retries) throw error;
+      }
+    }
+  },
+  
+  // Handle 401 errors with automatic token refresh
+  handle401Error: async (originalRequest) => {
+    try {
+      console.log('🔄 Handling 401 error - attempting token refresh...');
+      const refreshData = await AuthUtils.refreshSession();
+      
+      if (refreshData?.session?.access_token) {
+        console.log('✅ Token refreshed, retrying original request...');
+        // Return indication that request should be retried
+        return { shouldRetry: true, newToken: refreshData.session.access_token };
+      } else {
+        console.warn('⚠️ No new token received after refresh');
+        return { shouldRetry: false };
+      }
+    } catch (error) {
+      console.error('❌ Failed to refresh token:', error);
+      return { shouldRetry: false, error };
+    }
+  },
+  
+  // Expose debug function globally
+  exposeDebugState: () => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      window.debugAuthState = async () => {
+        console.log('🔧 === AUTH DEBUG STATE ===');
+        try {
+          const { data: { session }, error } = await supabase.auth.getSession();
+          console.log('📊 Session Status:', session ? 'Active' : 'None');
+          if (session) {
+            console.log('👤 User:', session.user?.email);
+            console.log('🔑 Token expires:', new Date(session.expires_at * 1000).toLocaleString());
+            console.log('🔍 Token valid:', new Date(session.expires_at * 1000) > new Date() ? 'Yes' : 'No');
+          }
+          if (error) console.log('❌ Session Error:', error);
+          console.log('🌐 Online:', navigator.onLine);
+          console.log('💾 LocalStorage keys:', Object.keys(localStorage).filter(k => k.includes('supabase')));
+        } catch (err) {
+          console.error('💥 Debug failed:', err);
+        }
+        console.log('🔧 === END DEBUG ===');
+      };
+      console.log('🔧 Auth debug available: window.debugAuthState()');
+    }
+  }
+};
+
 console.log('🔗 Using Supabase for authentication');
 
 const AuthContext = createContext();
@@ -41,12 +118,33 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [lastNetworkCheck, setLastNetworkCheck] = useState(new Date());
 
   useEffect(() => {
     let mounted = true;
     let timeoutId;
     
     console.log('🔄 AuthProvider initializing...');
+    
+    // Expose debug functions globally
+    AuthUtils.exposeDebugState();
+    
+    // Set up network monitoring
+    const handleOnline = () => {
+      console.log('🌐 Network connected');
+      setIsOnline(true);
+      setLastNetworkCheck(new Date());
+    };
+    
+    const handleOffline = () => {
+      console.log('😫 Network disconnected');
+      setIsOnline(false);
+      setLastNetworkCheck(new Date());
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
     
     // Check initial session immediately with timeout and fallbacks
     const initializeAuth = async () => {
@@ -233,6 +331,8 @@ export const AuthProvider = ({ children }) => {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
       authSubscription?.unsubscribe();
     };
   }, []);
@@ -401,7 +501,17 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    supabase // Expose supabase client for direct use
+    supabase, // Expose supabase client for direct use
+    
+    // Enhanced features
+    isOnline,
+    lastNetworkCheck,
+    AuthUtils, // Expose auth utilities
+    
+    // Enhanced methods
+    refreshSession: AuthUtils.refreshSession,
+    handle401Error: AuthUtils.handle401Error,
+    debugAuthState: typeof window !== 'undefined' ? window.debugAuthState : () => console.log('Debug not available')
   };
 
   return (

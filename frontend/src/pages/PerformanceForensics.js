@@ -18,6 +18,7 @@ const PerformanceForensics = () => {
       cta: '',
       platform: 'facebook',
       industry: '',
+      target_audience: '',
       performance_metrics: ''
     }
   });

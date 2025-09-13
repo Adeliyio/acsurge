@@ -28,8 +28,7 @@ import {
   Lightbulb,
   Timeline,
   Star,
-  AutoAwesome,
-  Refresh
+  AutoAwesome
 } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
@@ -154,7 +153,6 @@ const Dashboard = () => {
   } = useDashboardAnalytics();
   
   const refreshProjects = useRefreshProjects();
-  const [refreshing, setRefreshing] = useState(false);
   
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -193,18 +191,6 @@ const Dashboard = () => {
     }
   ];
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await refetchDashboard();
-      refreshProjects();
-    } catch (error) {
-      console.error('Error refreshing dashboard:', error);
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
   const handleQuickAnalyze = () => {
     navigate('/analyze');
   };
@@ -212,10 +198,6 @@ const Dashboard = () => {
   const handleOnboardingComplete = () => {
     localStorage.setItem('adcopysurge_onboarding_completed', 'true');
     setShowOnboarding(false);
-  };
-  
-  const handleShowOnboarding = () => {
-    setShowOnboarding(true);
   };
 
   return (
@@ -287,43 +269,7 @@ const Dashboard = () => {
                   </Box>
                 </Box>
                 
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button
-                    variant="contained"
-                    onClick={handleRefresh}
-                    disabled={refreshing}
-                    sx={{ 
-                      bgcolor: 'rgba(255,255,255,0.2)', 
-                      color: 'white',
-                      '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' }
-                    }}
-                  >
-                    <Refresh sx={{ 
-                      animation: refreshing ? 'spin 1s linear infinite' : 'none',
-                      '@keyframes spin': {
-                        '0%': { transform: 'rotate(0deg)' },
-                        '100%': { transform: 'rotate(360deg)' }
-                      }
-                    }} />
-                  </Button>
-                  
-                  <Button
-                    variant="outlined"
-                    onClick={handleShowOnboarding}
-                    size="small"
-                    sx={{ 
-                      bgcolor: 'rgba(255,255,255,0.1)', 
-                      color: 'white',
-                      borderColor: 'rgba(255,255,255,0.3)',
-                      '&:hover': { 
-                        bgcolor: 'rgba(255,255,255,0.2)',
-                        borderColor: 'rgba(255,255,255,0.5)'
-                      }
-                    }}
-                  >
-                    🎯 Tutorial
-                  </Button>
-                  
+                <Box>
                   <Button
                     variant="contained"
                     component={RouterLink}
@@ -481,7 +427,7 @@ const Dashboard = () => {
         </Grid>
 
         {/* Recent Projects */}
-        <Grid item xs={12} lg={8}>
+        <Grid item xs={12}>
           <Card>
             <CardContent>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -590,36 +536,81 @@ const Dashboard = () => {
           </Card>
         </Grid>
 
-        {/* Tips and Recommendations */}
-        <Grid item xs={12} lg={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Lightbulb color="warning" />
-                Smart Tips
-              </Typography>
-              
-              {tips.map((tip, index) => (
-                <TipCard
-                  key={index}
-                  title={tip.title}
-                  message={tip.message}
-                  action={tip.action}
-                  actionLink={tip.actionLink}
-                  severity={tip.severity}
-                />
-              ))}
-              
-              <Alert severity="info" sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                  💡 Pro Tip
-                </Typography>
-                <Typography variant="body2">
-                  Use our project workspace to analyze multiple ad variations at once for better insights.
-                </Typography>
-              </Alert>
-            </CardContent>
-          </Card>
+        {/* Smart Tips - Horizontal Layout */}
+        <Grid item xs={12}>
+          <Typography variant="h5" fontWeight={600} gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Lightbulb color="warning" />
+            💡 Smart Tips
+          </Typography>
+          
+          <Grid container spacing={3}>
+            {tips.map((tip, index) => (
+              <Grid item xs={12} sm={6} md={4} key={index}>
+                <Card sx={{ height: '100%' }}>
+                  <CardContent>
+                    <Alert
+                      severity={tip.severity}
+                      sx={{ 
+                        border: 'none',
+                        bgcolor: 'transparent',
+                        p: 0,
+                        '& .MuiAlert-icon': {
+                          mt: 0.5
+                        }
+                      }}
+                      action={
+                        tip.action && tip.actionLink && (
+                          <Button 
+                            size="small" 
+                            component={RouterLink}
+                            to={tip.actionLink}
+                            sx={{ textTransform: 'none' }}
+                            variant="contained"
+                            color={tip.severity}
+                          >
+                            {tip.action}
+                          </Button>
+                        )
+                      }
+                    >
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                        {tip.title}
+                      </Typography>
+                      <Typography variant="body2">
+                        {tip.message}
+                      </Typography>
+                    </Alert>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+            
+            {/* Pro Tip Card */}
+            <Grid item xs={12} sm={6} md={4}>
+              <Card sx={{ height: '100%', bgcolor: 'rgba(37, 99, 235, 0.05)' }}>
+                <CardContent>
+                  <Alert 
+                    severity="info" 
+                    sx={{ 
+                      border: 'none',
+                      bgcolor: 'transparent',
+                      p: 0,
+                      '& .MuiAlert-icon': {
+                        mt: 0.5
+                      }
+                    }}
+                  >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                      💡 Pro Tip
+                    </Typography>
+                    <Typography variant="body2">
+                      Use our project workspace to analyze multiple ad variations at once for better insights.
+                    </Typography>
+                  </Alert>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
         </Grid>
 
         {/* Getting Started Guide */}

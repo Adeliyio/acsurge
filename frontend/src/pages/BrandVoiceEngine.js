@@ -18,6 +18,7 @@ const BrandVoiceEngine = () => {
       cta: '',
       platform: 'facebook',
       industry: '',
+      target_audience: '',
       brand_samples: ''
     }
   });

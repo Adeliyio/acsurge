@@ -39,6 +39,7 @@ import CopyInputForm from '../components/shared/CopyInputForm';
 import { ErrorMessage } from '../components/ui';
 import AnalysisToolsSelector from '../components/shared/AnalysisToolsSelector';
 import { DEFAULT_ENABLED_TOOLS } from '../constants/analysisTools';
+import { useSettings } from '../contexts/SettingsContext';
 
 const ProjectWorkspace = () => {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ const ProjectWorkspace = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [project, setProject] = useState(null);
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const { showAdvancedSettings } = useSettings();
 
   const { control, handleSubmit, formState: { errors }, watch, setValue, reset } = useForm({
     defaultValues: {
@@ -375,8 +376,6 @@ const ProjectWorkspace = () => {
               <AnalysisToolsSelector
                 watch={watch}
                 setValue={setValue}
-                showAdvancedSettings={showAdvancedSettings}
-                setShowAdvancedSettings={setShowAdvancedSettings}
                 subtitle="Select which analysis tools to run on your ad copy. All selected tools will process your content automatically."
               />
             </Paper>

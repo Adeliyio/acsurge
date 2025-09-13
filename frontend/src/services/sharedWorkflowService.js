@@ -431,6 +431,18 @@ export const ToolIntegration = {
     });
   },
 
+  // Submit performance forensics result
+  async submitPerformanceResult(projectId, result) {
+    return await sharedWorkflowService.updateToolResult(projectId, 'performance_forensics', {
+      performance_insights: result.performance_insights,
+      optimization_opportunities: result.optimization_opportunities,
+      competitive_analysis: result.competitive_analysis,
+      recommendations: result.recommendations,
+      overall_score: result.overall_score,
+      confidence_score: result.confidence_score
+    });
+  },
+
   // Get project ad copy for tool analysis
   async getProjectAdCopy(projectId) {
     const project = await sharedWorkflowService.getProject(projectId, false);

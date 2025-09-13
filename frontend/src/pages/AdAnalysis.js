@@ -53,8 +53,6 @@ const AdAnalysis = () => {
   const [showVariationOptions, setShowVariationOptions] = useState(false);
   const [generatedVariations, setGeneratedVariations] = useState([]);
   
-  // Analysis tools configuration state
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   
   const {
     generateSingle,
@@ -749,8 +747,6 @@ const AdAnalysis = () => {
                 <AnalysisToolsSelector
                   watch={watch}
                   setValue={setValue}
-                  showAdvancedSettings={showAdvancedSettings}
-                  setShowAdvancedSettings={setShowAdvancedSettings}
                   title="Analysis Tools"
                   subtitle="Select which analysis tools to run on your ad copy. All selected tools will process your content automatically."
                 />

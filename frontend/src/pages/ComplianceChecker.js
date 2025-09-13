@@ -35,6 +35,7 @@ const ComplianceChecker = () => {
       cta: '',
       platform: 'facebook',
       industry: '',
+      target_audience: '',
       strict_mode: false
     }
   });
