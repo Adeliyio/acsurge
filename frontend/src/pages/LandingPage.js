@@ -35,7 +35,7 @@ import {
   Timeline,
   Lightbulb,
   ArrowForward,
-  PlayArrow,
+  PlayArrow as PlayIcon,
   ExpandMore,
   HelpOutline,
   Security,
@@ -435,7 +435,7 @@ const LandingPage = () => {
                   variant="contained"
                   size="large"
                   onClick={handleGetStarted}
-                  startIcon={<PlayArrow />}
+                  startIcon={<PlayIcon />}
                   sx={{
                     background: 'linear-gradient(45deg, #FFD700 0%, #FFA000 100%)',
                     color: '#000',
@@ -600,7 +600,7 @@ const LandingPage = () => {
                         }
                       }}
                     >
-                      <PlayArrow 
+                      <PlayIcon 
                         sx={{ 
                           fontSize: 40, 
                           color: 'primary.main',

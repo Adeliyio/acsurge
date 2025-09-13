@@ -23,7 +23,7 @@ import {
   Alert
 } from '@mui/material';
 import {
-  PlayArrow,
+  PlayArrow as PlayIcon,
   CheckCircle,
   Analytics,
   Speed,
@@ -228,7 +228,7 @@ const GettingStarted = () => {
                 <Button
                   variant="contained"
                   size="large"
-                  startIcon={<PlayArrow />}
+                  startIcon={<PlayIcon />}
                   onClick={() => navigate('/dashboard')}
                   sx={{
                     background: 'linear-gradient(45deg, #FFD700 0%, #FFA000 100%)',

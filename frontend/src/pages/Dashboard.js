@@ -24,7 +24,7 @@ import {
   Analytics,
   Add,
   CheckCircle,
-  PlayArrow,
+  PlayArrow as PlayIcon,
   Lightbulb,
   Timeline,
   Star,
@@ -408,7 +408,7 @@ const Dashboard = () => {
           <QuickActionCard
             title="Generate A/B Tests"
             description="Create multiple ad variations to test performance"
-            icon={PlayArrow}
+            icon={PlayIcon}
             color="warning"
             buttonText="Generate"
             buttonLink="/ab-test-generator"
