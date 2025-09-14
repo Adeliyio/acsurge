@@ -12,11 +12,11 @@ import {
   Chip
 } from '@mui/material';
 import {
-  PlayArrow,
   AutoAwesome,
   Speed,
   TrendingUp
 } from '@mui/icons-material';
+import StartIcon from '../icons/StartIcon';
 
 const UXImprovementDemo = () => {
   const [showResults, setShowResults] = useState(false);
@@ -47,7 +47,7 @@ const UXImprovementDemo = () => {
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ textAlign: 'center', p: 3 }}>
               <Box sx={{ mb: 3 }}>
-                <PlayArrow sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+                <StartIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
                 <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
                   🎯 Smart Onboarding
                 </Typography>
@@ -65,7 +65,7 @@ const UXImprovementDemo = () => {
               <Button
                 variant="contained"
                 fullWidth
-                startIcon={<PlayArrow />}
+                startIcon={<StartIcon />}
               >
                 Try Onboarding
               </Button>

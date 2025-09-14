@@ -49,8 +49,8 @@ export const BlogProvider = ({ children }) => {
       console.error(`API Error (${url}):`, error);
       
       // Handle specific error cases
-      if (error.response?.status === 502) {
-        console.warn('Blog service temporarily unavailable (502), returning empty data');
+      if (error.response?.status === 502 || error.response?.status === 503) {
+        console.warn(`Blog service temporarily unavailable (${error.response.status}), returning empty data`);
         if (url.includes('/categories')) return [];
         if (url.includes('/popular') || url.includes('/trending')) return [];
         return { posts: [], total: 0, limit: 20, offset: 0, has_more: false };

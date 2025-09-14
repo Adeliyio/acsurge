@@ -25,7 +25,6 @@ import {
   Tabs
 } from '@mui/material';
 import {
-  PlayArrow,
   CheckCircle,
   ExpandMore,
   Search as SearchIcon,
@@ -42,6 +41,7 @@ import {
   Analytics,
   FilterList
 } from '@mui/icons-material';
+import StartIcon from '../../components/icons/StartIcon';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../services/authContext';
 

@@ -33,6 +33,7 @@ import {
   ArrowForward,
   Close
 } from '@mui/icons-material';
+import StartIcon from '../icons/StartIcon';
 import { useAuth } from '../../services/authContext';
 import toast from 'react-hot-toast';
 
@@ -440,7 +441,7 @@ const SmartOnboarding = ({ open, onClose, userType = 'new' }) => {
                   size="large"
                   onClick={runSampleAnalysis}
                   disabled={loading}
-                  startIcon={loading ? <LinearProgress /> : <PlayArrow />}
+                  startIcon={loading ? <LinearProgress /> : <StartIcon />}
                   sx={{ px: 4, py: 1.5 }}
                 >
                   {loading ? 'Analyzing...' : 'Analyze This Ad'}

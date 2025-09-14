@@ -69,11 +69,11 @@ RUN python -c "import nltk; \
     nltk.download('averaged_perceptron_tagger', quiet=True)" 2>/dev/null || echo "NLTK data download skipped"
 
 # Expose port (Fly.io sets PORT environment variable)
-EXPOSE 8000
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
 # Start command - Fly.io will set PORT env var
-CMD ["sh", "-c", "gunicorn main:app --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120 --keep-alive 2 --max-requests 1000 --max-requests-jitter 50 --preload --access-logfile - --error-logfile -"]
+CMD ["uvicorn", "main_production:app", "--host", "0.0.0.0", "--port", "8080"]

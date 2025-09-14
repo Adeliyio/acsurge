@@ -32,12 +32,12 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as ViewIcon,
-  PlayArrow as PlayIcon,
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
   Article as DraftIcon,
   Folder as FolderIcon
 } from '@mui/icons-material';
+import StartIcon from '../components/icons/StartIcon';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { 
@@ -165,7 +165,7 @@ const ProjectCard = ({ project, onEdit, onDelete, onRunAnalysis, isDeleting = fa
           <Button
             size="small"
             variant="contained"
-            startIcon={isRunningAnalysis ? <CircularProgress size={16} /> : <PlayIcon />}
+            startIcon={isRunningAnalysis ? <CircularProgress size={16} /> : <StartIcon />}
             onClick={(e) => {
               e.stopPropagation();
               onRunAnalysis(project);
@@ -194,7 +194,7 @@ const ProjectCard = ({ project, onEdit, onDelete, onRunAnalysis, isDeleting = fa
             onClick={() => { onRunAnalysis(project); setMenuAnchor(null); }}
             disabled={project.status === 'analyzing'}
           >
-            <PlayIcon sx={{ mr: 1 }} fontSize="small" />
+            <StartIcon sx={{ mr: 1 }} fontSize="small" />
             Run Analysis
           </MenuItem>
           <Divider />

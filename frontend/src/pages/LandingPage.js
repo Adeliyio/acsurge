@@ -35,7 +35,6 @@ import {
   Timeline,
   Lightbulb,
   ArrowForward,
-  PlayArrow as PlayIcon,
   ExpandMore,
   HelpOutline,
   Security,
@@ -49,6 +48,7 @@ import {
   RecordVoiceOver as BrandVoiceIcon,
   Gavel as LegalIcon
 } from '@mui/icons-material';
+import StartIcon from '../components/icons/StartIcon';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 
@@ -435,7 +435,7 @@ const LandingPage = () => {
                   variant="contained"
                   size="large"
                   onClick={handleGetStarted}
-                  startIcon={<PlayIcon />}
+                  startIcon={<StartIcon />}
                   sx={{
                     background: 'linear-gradient(45deg, #FFD700 0%, #FFA000 100%)',
                     color: '#000',
@@ -600,7 +600,7 @@ const LandingPage = () => {
                         }
                       }}
                     >
-                      <PlayIcon 
+                      <StartIcon 
                         sx={{ 
                           fontSize: 40, 
                           color: 'primary.main',

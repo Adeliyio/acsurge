@@ -11,9 +11,9 @@ import {
 import {
   AutoFixHigh,
   Download,
-  Share,
-  PlayArrow
+  Share
 } from '@mui/icons-material';
+import StartIcon from '../icons/StartIcon';
 import toast from 'react-hot-toast';
 
 /**
@@ -124,7 +124,7 @@ const ActionableResultsInterpreter = ({
               fullWidth
               variant="outlined"
               size="large"
-              startIcon={<PlayArrow />}
+              startIcon={<StartIcon />}
               sx={{ py: 1.5 }}
             >
               Run Another Analysis

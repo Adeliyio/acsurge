@@ -28,13 +28,13 @@ import {
   Download as DownloadIcon,
   Share as ShareIcon,
   Edit as EditIcon,
-  PlayArrow as PlayIcon,
   Stop as StopIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   Schedule as ScheduleIcon,
   Warning as WarningIcon
 } from '@mui/icons-material';
+import StartIcon from '../components/icons/StartIcon';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from 'react-query';
 import toast from 'react-hot-toast';

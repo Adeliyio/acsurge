@@ -23,7 +23,6 @@ import {
   Alert
 } from '@mui/material';
 import {
-  PlayArrow as PlayIcon,
   CheckCircle,
   Analytics,
   Speed,
@@ -34,6 +33,7 @@ import {
   AutoAwesome,
   Rocket
 } from '@mui/icons-material';
+import StartIcon from '../../components/icons/StartIcon';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../services/authContext';
 
@@ -228,7 +228,7 @@ const GettingStarted = () => {
                 <Button
                   variant="contained"
                   size="large"
-                  startIcon={<PlayIcon />}
+                  startIcon={<StartIcon />}
                   onClick={() => navigate('/dashboard')}
                   sx={{
                     background: 'linear-gradient(45deg, #FFD700 0%, #FFA000 100%)',

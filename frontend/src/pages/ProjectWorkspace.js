@@ -24,13 +24,13 @@ import {
 } from '@mui/material';
 import { 
   Save as SaveIcon,
-  PlayArrow as PlayIcon,
   Settings as SettingsIcon,
   Visibility as PreviewIcon,
   Share as ShareIcon,
   ContentCopy as CopyIcon,
   Edit as EditIcon
 } from '@mui/icons-material';
+import StartIcon from '../components/icons/StartIcon';
 import { useForm, Controller } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -401,7 +401,7 @@ const ProjectWorkspace = () => {
                   variant="contained"
                   size="large"
                   disabled={loading || saving || watchedTools.length === 0}
-                  startIcon={loading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : <PlayIcon />}
+                  startIcon={loading ? <CircularProgress size={20} sx={{ color: 'white' }} /> : <StartIcon />}
                   sx={{ 
                     minWidth: 220,
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',

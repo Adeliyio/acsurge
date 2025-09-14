@@ -48,9 +48,9 @@ import {
   RecordVoiceOver as BrandVoiceIcon,
   Gavel as LegalIcon,
   // Shared workflow icons
-  Folder as ProjectsIcon,
-  PlayArrow as WorkflowIcon
+  Folder as ProjectsIcon
 } from '@mui/icons-material';
+import StartIcon from './icons/StartIcon';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 
@@ -80,7 +80,7 @@ const navigationSections = [
         id: 'new-project',
         label: 'Create Project',
         path: '/project/new/workspace',
-        icon: WorkflowIcon,
+        icon: StartIcon,
         badge: null
       }
     ]

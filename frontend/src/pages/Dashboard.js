@@ -24,12 +24,12 @@ import {
   Analytics,
   Add,
   CheckCircle,
-  PlayArrow as PlayIcon,
   Lightbulb,
   Timeline,
   Star,
   AutoAwesome
 } from '@mui/icons-material';
+import StartIcon from '../components/icons/StartIcon';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { useDashboardAnalytics, useRefreshProjects } from '../hooks/useProjects';
@@ -408,7 +408,7 @@ const Dashboard = () => {
           <QuickActionCard
             title="Generate A/B Tests"
             description="Create multiple ad variations to test performance"
-            icon={PlayIcon}
+            icon={StartIcon}
             color="warning"
             buttonText="Generate"
             buttonLink="/ab-test-generator"
