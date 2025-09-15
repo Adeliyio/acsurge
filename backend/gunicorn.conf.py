@@ -1,13 +1,13 @@
-# Gunicorn configuration for AdCopySurge Backend
+# Gunicorn configuration for AdCopySurge Backend VPS Deployment
 import multiprocessing
 import os
 
 # Server socket
-bind = "unix:/run/adcopysurge/adcopysurge.sock"
+bind = "unix:/run/adcopysurge/gunicorn.sock"
 backlog = 2048
 
-# Worker processes
-workers = multiprocessing.cpu_count() * 2 + 1
+# Worker processes - optimized for VPS
+workers = min(4, multiprocessing.cpu_count() * 2 + 1)  # Cap at 4 workers for VPS
 worker_class = "uvicorn.workers.UvicornWorker"
 worker_connections = 1000
 max_requests = 1000
@@ -23,11 +23,11 @@ loglevel = "info"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
 # Process naming
-proc_name = "adcopysurge"
+proc_name = "adcopysurge-backend"
 
 # Server mechanics
 daemon = False
-pidfile = "/run/adcopysurge/adcopysurge.pid"
+pidfile = "/run/adcopysurge/gunicorn.pid"
 user = "www-data"
 group = "www-data"
 tmp_upload_dir = None
@@ -38,7 +38,9 @@ tmp_upload_dir = None
 
 # Environment variables
 raw_env = [
-    f"PYTHONPATH=/var/www/adcopysurge/backend",
+    "PYTHONPATH=/home/deploy/adcopysurge/backend",
+    "PYTHONDONTWRITEBYTECODE=1",
+    "PYTHONUNBUFFERED=1",
 ]
 
 # Worker process callbacks

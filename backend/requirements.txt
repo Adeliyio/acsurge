@@ -7,6 +7,8 @@ python-multipart>=0.0.6,<0.1.0
 sqlalchemy>=2.0.23,<2.1.0
 alembic>=1.13.0,<1.15.0
 psycopg2-binary>=2.9.9,<3.0.0  # PostgreSQL driver
+aiosqlite>=0.19.0,<1.0.0  # Async SQLite driver for development
+asyncpg>=0.29.0,<1.0.0  # Async PostgreSQL driver
 
 # Authentication
 python-jose[cryptography]==3.3.0
@@ -61,6 +63,7 @@ colorama>=0.4.6,<1.0.0
 # Background tasks
 celery==5.3.4
 redis==5.0.1
+tenacity>=8.2.0,<9.0.0  # Retry logic for database connections
 
 # Blog system dependencies
 python-frontmatter==1.0.1

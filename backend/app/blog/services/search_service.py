@@ -1,6 +1,6 @@
 import re
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ..models.blog_models import (
     BlogPostList,
@@ -146,7 +146,10 @@ class SearchService:
             )
             
             # Boost recent posts slightly
-            days_since_publish = (datetime.now() - (post.published_at or post.created_at)).days
+            post_date = post.published_at or post.created_at
+            if post_date.tzinfo is None:
+                post_date = post_date.replace(tzinfo=timezone.utc)
+            days_since_publish = (datetime.now(timezone.utc) - post_date).days
             if days_since_publish <= 7:
                 score *= 1.2
             elif days_since_publish <= 30:
@@ -167,7 +170,10 @@ class SearchService:
                 continue
             
             # Only consider posts from the last 30 days
-            days_since_publish = (datetime.now() - (post.published_at or post.created_at)).days
+            post_date = post.published_at or post.created_at
+            if post_date.tzinfo is None:
+                post_date = post_date.replace(tzinfo=timezone.utc)
+            days_since_publish = (datetime.now(timezone.utc) - post_date).days
             if days_since_publish > 30:
                 continue
             

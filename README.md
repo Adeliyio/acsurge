@@ -54,21 +54,35 @@ frontend/
 ```
 
 ### Key Technologies
-- **Backend**: FastAPI, SQLAlchemy, PostgreSQL, Redis
+- **Backend**: FastAPI, SQLAlchemy, PostgreSQL (Supabase), Redis
 - **AI/ML**: OpenAI GPT, Hugging Face Transformers, scikit-learn
-- **Frontend**: React 18, Material-UI, React Query
-- **Authentication**: JWT with bcrypt password hashing
-- **Payments**: Stripe integration
-- **Deployment**: Docker, Docker Compose
+- **Frontend**: React 18, Material-UI, React Query (Deployed on Netlify)
+- **Authentication**: JWT with Supabase Auth
+- **Background Tasks**: Celery with Redis broker
+- **Payments**: Paddle Billing integration
+- **Deployment**: VPS with systemd, Nginx, Gunicorn + Uvicorn
 
 ## 📦 Installation
 
 ### Prerequisites
-- Python 3.12+ (Required for Railway deployment)
+
+**For Development:**
+- Python 3.11+
 - Node.js 18+
-- PostgreSQL 15+
-- Redis 7+
+- Redis 7+ (for local development)
 - Docker & Docker Compose (optional)
+
+**For Production (VPS):**
+- Ubuntu 22.04 VPS (2GB+ RAM recommended)
+- Python 3.11+ with venv support
+- Nginx
+- Redis 7+
+- Domain name with DNS pointing to VPS
+- SSL certificate (Let's Encrypt recommended)
+
+**External Services:**
+- Supabase PostgreSQL database
+- Netlify (for frontend hosting)
 
 ### Python 3.12 Compatibility
 This application is configured for Python 3.12 compatibility to ensure optimal deployment on Railway. The package dependencies are carefully managed using:
@@ -245,63 +259,61 @@ docker-compose -f docker-compose.test.yml up --build
 
 ## 🚀 Deployment
 
-### Production Deployment
+### Architecture Overview
 
-1. **Set production environment variables**
+**Current Production Setup:**
+- **Frontend**: Deployed on Netlify (Static React SPA)
+- **Backend**: VPS deployment with Ubuntu 22.04
+- **Database**: Supabase PostgreSQL (managed)
+- **File Storage**: Integrated with Supabase
+
+### VPS Production Deployment
+
+🚀 **Deploy to Traditional VPS - Full control and cost-effective!**
+
+📖 **See [VPS_DEPLOYMENT.md](./VPS_DEPLOYMENT.md) for complete VPS deployment guide.**
+
+**Quick VPS Setup:**
 ```bash
-export DEBUG=False
-export DATABASE_URL=your-production-db-url
-export SECRET_KEY=your-production-secret-key
+# On your VPS (Ubuntu 22.04)
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3.11 python3.11-venv redis-server nginx
+
+# Clone and setup
+cd /home/deploy
+git clone https://github.com/yourusername/adcopysurge.git
+cd adcopysurge/backend
+
+# Install dependencies
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Configure services
+sudo cp deploy/gunicorn.service /etc/systemd/system/
+sudo cp deploy/celery.service /etc/systemd/system/
+sudo systemctl enable gunicorn celery
 ```
 
-2. **Build and deploy with Docker**
+**Services Architecture:**
+- **Gunicorn + Uvicorn**: ASGI server for FastAPI
+- **Celery Worker**: Background task processing
+- **Redis**: Message broker and caching
+- **Nginx**: Reverse proxy with SSL termination
+- **Systemd**: Process management and auto-restart
+
+### Development Deployment
+
+1. **Set development environment variables**
 ```bash
-docker-compose -f docker-compose.prod.yml up -d
+cp backend/.env.example backend/.env
+# Edit .env with your configuration
 ```
 
-### Recommended Hosting Platforms
-- **Backend**: Fly.io, Railway, Render, Heroku, DigitalOcean App Platform
-- **Frontend**: Fly.io, Vercel, Netlify, Cloudflare Pages
-- **Database**: Fly.io PostgreSQL, Railway PostgreSQL, Heroku Postgres, AWS RDS
-
-### Quick Deploy to Fly.io
-
-🚀 **Deploy to Fly.io - Developer-friendly with generous free tier!**
-
-📖 **See [DEPLOY_FLY.md](./DEPLOY_FLY.md) for complete Fly.io deployment guide.**
-
+2. **Run with Docker Compose**
 ```bash
-# Quick start commands
-fly auth login
-cd backend && fly launch
-cd ../frontend && fly launch
+docker-compose up -d
 ```
-
-### Railway Deployment Troubleshooting
-
-#### Python 3.12 Compatibility Issues
-If you encounter `distutils` errors during deployment:
-
-1. **Verify Configuration Files**:
-   - `runtime.txt` specifies Python 3.12.7
-   - `nixpacks.toml` uses constraints file
-   - All requirements use Python 3.12 compatible versions
-
-2. **Common Error Fixes**:
-   ```bash
-   # Error: ModuleNotFoundError: No module named 'distutils'
-   # Solution: All package versions updated to use pre-built wheels
-   
-   # Error: numpy==1.25.2 compilation failed
-   # Solution: Updated to numpy>=1.26.2 with Python 3.12 wheels
-   ```
-
-3. **Deployment Commands**:
-   ```bash
-   # Railway uses these commands (configured in nixpacks.toml):
-   pip install --upgrade pip setuptools wheel
-   pip install -r requirements.txt -c constraints-py312.txt --no-cache-dir --prefer-binary
-   ```
 
 ## 📊 Analytics & Monitoring
 

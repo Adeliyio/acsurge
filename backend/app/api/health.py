@@ -1,3 +1,5 @@
+# REPLACED WITH ROBUST VERSION - See health_fixed.py for reference
+# This file temporarily disabled during Phase 1 fixes
 """
 Health check and metrics endpoints for AdCopySurge API
 Production-ready monitoring endpoints for deployment
@@ -140,7 +142,29 @@ async def health_check(db: Session = Depends(get_db)):
             "message": "Memory monitoring unavailable - psutil not installed"
         }
     
-    # 4. Check critical environment variables
+    # 4. Blog service health check
+    if settings.ENABLE_BLOG:
+        try:
+            from app.blog.services.blog_service import BlogService
+            blog_service = BlogService(settings.BLOG_CONTENT_DIR, settings.BLOG_GRACEFUL_DEGRADATION)
+            blog_health = blog_service.get_health_status()
+            health_status["checks"]["blog_service"] = {
+                "status": "healthy" if blog_health["healthy"] else "degraded",
+                "message": blog_health.get("error_message", "Blog service operational"),
+                "dependencies": blog_health["dependencies"]
+            }
+        except Exception as e:
+            health_status["checks"]["blog_service"] = {
+                "status": "unavailable",
+                "message": f"Blog service check failed: {str(e)}"
+            }
+    else:
+        health_status["checks"]["blog_service"] = {
+            "status": "disabled",
+            "message": "Blog functionality disabled via configuration"
+        }
+    
+    # 5. Check critical environment variables
     critical_vars = ["SECRET_KEY", "DATABASE_URL"]
     missing_vars = []
     for var in critical_vars:

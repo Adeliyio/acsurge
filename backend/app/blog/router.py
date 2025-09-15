@@ -16,7 +16,7 @@ from .models.blog_models import (
 )
 from .services.blog_service import BlogService, BlogServiceError
 from .services.seo_service import SEOService
-from ..auth import require_admin
+from ..auth.dependencies import require_admin
 from ..models.user import User
 from ..core.config import settings
 
@@ -37,10 +37,10 @@ except Exception as e:
     logger.error(f"Failed to initialize blog services: {e}")
     # Create a placeholder service that will return empty responses
     blog_service = BlogService(
-        content_dir="/tmp/empty_blog",
+        content_dir="C:/tmp/empty_blog",
         graceful_degradation=True
     )
-    seo_service = None
+    seo_service = SEOService()  # Still initialize SEO service with defaults
 
 
 @router.get("/", response_model=BlogPostResponse)
@@ -148,11 +148,136 @@ async def get_posts_by_tag(
         raise HTTPException(status_code=500, detail=f"Failed to fetch posts by tag: {str(e)}")
 
 
+# Utility endpoints (must be before /{slug} to avoid conflicts)
+@router.get("/categories", response_model=List[str])
+async def get_categories():
+    """Get all available categories"""
+    return [category.value for category in PostCategory]
+
+
+@router.get("/popular", response_model=List[BlogPostList])
+async def get_popular_posts(limit: int = Query(5, ge=1, le=10)):
+    """Get popular blog posts"""
+    
+    try:
+        all_posts = blog_service.get_all_posts(status=PostStatus.PUBLISHED)
+        popular = blog_service.search_service.get_popular_posts(all_posts, limit)
+        
+        return popular
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch popular posts: {str(e)}")
+
+
+@router.get("/trending", response_model=List[BlogPostList])
+async def get_trending_posts(limit: int = Query(5, ge=1, le=10)):
+    """Get trending blog posts"""
+    
+    try:
+        all_posts = blog_service.get_all_posts(status=PostStatus.PUBLISHED)
+        trending = blog_service.search_service.get_trending_posts(all_posts, limit)
+        
+        return trending
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch trending posts: {str(e)}")
+
+
+# SEO endpoints (must be before /{slug} to avoid conflicts)
+@router.get("/sitemap.xml")
+async def get_sitemap():
+    """Generate XML sitemap for blog posts"""
+    
+    try:
+        posts = blog_service.get_all_posts(status=PostStatus.PUBLISHED)
+        if seo_service:
+            additional_urls = seo_service.get_default_sitemap_entries()
+            sitemap_xml = seo_service.generate_sitemap(posts, additional_urls)
+        else:
+            # Fallback basic sitemap
+            sitemap_xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>'
+        
+        return Response(
+            content=sitemap_xml,
+            media_type="application/xml; charset=utf-8"
+        )
+        
+    except Exception as e:
+        logger.warning(f"Sitemap generation failed: {e}")
+        # Return minimal sitemap instead of 500
+        minimal_sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>'
+        return Response(
+            content=minimal_sitemap,
+            media_type="application/xml; charset=utf-8"
+        )
+
+
+@router.get("/rss.xml")
+async def get_rss_feed():
+    """Generate RSS feed for blog posts"""
+    
+    try:
+        posts = blog_service.get_all_posts(status=PostStatus.PUBLISHED)
+        
+        if seo_service:
+            rss_xml = seo_service.generate_rss_feed(posts)
+        else:
+            # Fallback basic RSS
+            rss_xml = '<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0">\n<channel>\n<title>AdCopySurge Blog</title>\n<description>Blog posts</description>\n</channel>\n</rss>'
+        
+        return Response(
+            content=rss_xml,
+            media_type="application/rss+xml; charset=utf-8",
+            headers={
+                "Cache-Control": "public, max-age=3600"  # Cache for 1 hour
+            }
+        )
+        
+    except Exception as e:
+        logger.warning(f"RSS generation failed: {e}")
+        # Return minimal RSS instead of 500
+        minimal_rss = '<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0">\n<channel>\n<title>AdCopySurge Blog</title>\n<description>Blog temporarily unavailable</description>\n</channel>\n</rss>'
+        return Response(
+            content=minimal_rss,
+            media_type="application/rss+xml; charset=utf-8"
+        )
+
+
+@router.get("/robots.txt", response_class=PlainTextResponse)
+async def get_robots_txt():
+    """Generate robots.txt for blog"""
+    
+    try:
+        if seo_service:
+            robots_content = seo_service.generate_robots_txt()
+        else:
+            # Fallback basic robots.txt
+            robots_content = "User-agent: *\nAllow: /"
+        
+        return PlainTextResponse(
+            content=robots_content,
+            headers={"Content-Type": "text/plain; charset=utf-8"}
+        )
+        
+    except Exception as e:
+        logger.warning(f"Robots.txt generation failed: {e}")
+        # Return minimal robots.txt instead of 500
+        return PlainTextResponse(
+            content="User-agent: *\nAllow: /",
+            headers={"Content-Type": "text/plain; charset=utf-8"}
+        )
+
+
 @router.get("/{slug}", response_model=BlogPostDetail)
 async def get_blog_post(slug: str):
     """Get a single blog post by slug"""
     
     try:
+        if not blog_service.is_healthy:
+            if blog_service.graceful_degradation:
+                logger.warning(f"Blog service unhealthy, cannot retrieve post {slug}")
+                raise HTTPException(status_code=404, detail="Post not found")
+        
         post = blog_service.get_post_by_slug(slug)
         
         if not post:
@@ -167,7 +292,9 @@ async def get_blog_post(slug: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch post: {str(e)}")
+        logger.error(f"Error fetching blog post {slug}: {e}")
+        # Return 404 instead of 500 for graceful degradation
+        raise HTTPException(status_code=404, detail="Post not found")
 
 
 # Admin-only endpoints
@@ -260,61 +387,7 @@ async def get_all_posts_admin(
         raise HTTPException(status_code=500, detail=f"Failed to fetch posts: {str(e)}")
 
 
-# SEO endpoints
-@router.get("/sitemap.xml")
-async def get_sitemap():
-    """Generate XML sitemap for blog posts"""
-    
-    try:
-        posts = blog_service.get_all_posts(status=PostStatus.PUBLISHED)
-        additional_urls = seo_service.get_default_sitemap_entries()
-        
-        sitemap_xml = seo_service.generate_sitemap(posts, additional_urls)
-        
-        return Response(
-            content=sitemap_xml,
-            media_type="application/xml; charset=utf-8"
-        )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate sitemap: {str(e)}")
-
-
-@router.get("/rss.xml")
-async def get_rss_feed():
-    """Generate RSS feed for blog posts"""
-    
-    try:
-        posts = blog_service.get_all_posts(status=PostStatus.PUBLISHED)
-        
-        rss_xml = seo_service.generate_rss_feed(posts)
-        
-        return Response(
-            content=rss_xml,
-            media_type="application/rss+xml; charset=utf-8",
-            headers={
-                "Cache-Control": "public, max-age=3600"  # Cache for 1 hour
-            }
-        )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate RSS feed: {str(e)}")
-
-
-@router.get("/robots.txt", response_class=PlainTextResponse)
-async def get_robots_txt():
-    """Generate robots.txt for blog"""
-    
-    try:
-        robots_content = seo_service.generate_robots_txt()
-        
-        return PlainTextResponse(
-            content=robots_content,
-            headers={"Content-Type": "text/plain; charset=utf-8"}
-        )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate robots.txt: {str(e)}")
+# SEO endpoints moved above to avoid route conflicts
 
 
 # Analytics and engagement endpoints
@@ -343,36 +416,4 @@ async def track_post_share(
     return {"message": "Share tracked"}
 
 
-# Utility endpoints
-@router.get("/categories", response_model=List[str])
-async def get_categories():
-    """Get all available categories"""
-    return [category.value for category in PostCategory]
-
-
-@router.get("/popular", response_model=List[BlogPostList])
-async def get_popular_posts(limit: int = Query(5, ge=1, le=10)):
-    """Get popular blog posts"""
-    
-    try:
-        all_posts = blog_service.get_all_posts(status=PostStatus.PUBLISHED)
-        popular = blog_service.search_service.get_popular_posts(all_posts, limit)
-        
-        return popular
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch popular posts: {str(e)}")
-
-
-@router.get("/trending", response_model=List[BlogPostList])
-async def get_trending_posts(limit: int = Query(5, ge=1, le=10)):
-    """Get trending blog posts"""
-    
-    try:
-        all_posts = blog_service.get_all_posts(status=PostStatus.PUBLISHED)
-        trending = blog_service.search_service.get_trending_posts(all_posts, limit)
-        
-        return trending
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch trending posts: {str(e)}")
+# Utility endpoints have been moved above /{slug} to avoid conflicts

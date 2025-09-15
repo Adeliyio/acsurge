@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# AdCopySurge Start Script for Render
+# AdCopySurge Start Script for VPS Deployment
 # This script starts the FastAPI application with production settings
 
 set -e  # Exit on any error
@@ -10,9 +10,9 @@ echo "🚀 Starting AdCopySurge API server..."
 # Set environment variables
 export PYTHONDONTWRITEBYTECODE=1
 export PYTHONUNBUFFERED=1
-export PYTHONPATH="/app/backend:/app"
+export PYTHONPATH="/home/deploy/adcopysurge/backend"
 
-# Get port from Render environment (Render sets $PORT automatically)
+# Default port for VPS deployment (will be overridden by systemd)
 export PORT=${PORT:-8000}
 echo "🔌 Server will bind to port: $PORT"
 

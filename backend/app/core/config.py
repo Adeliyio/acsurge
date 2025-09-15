@@ -34,14 +34,17 @@ class Settings(BaseSettings):
     # Application Settings
     APP_NAME: str = Field(default="AdCopySurge", description="Application name")
     APP_VERSION: str = Field(default="1.0.0", description="Application version")
+    VERSION: str = Field(default="1.0.0", description="Application version for health checks")
+    NODE_ENV: str = Field(default="development", description="Node environment equivalent")
     HOST: str = Field(default="127.0.0.1", description="Host to bind to")
     PORT: int = Field(default=8000, description="Port to bind to")
     
     # Platform-specific configuration
     RENDER_EXTERNAL_HOSTNAME: Optional[str] = Field(None, description="Render external hostname")
     RENDER_EXTERNAL_URL: Optional[str] = Field(None, description="Render external URL")
-    FLY_APP_NAME: Optional[str] = Field(None, description="Fly.io app name")
-    FLY_REGION: Optional[str] = Field(None, description="Fly.io region")
+    
+    # VPS Configuration
+    SERVER_NAME: Optional[str] = Field(None, description="VPS server domain name")
     
     # Security Configuration
     SECRET_KEY: str = Field(..., min_length=32, description="Secret key for JWT tokens")
@@ -56,6 +59,11 @@ class Settings(BaseSettings):
     REACT_APP_SUPABASE_ANON_KEY: Optional[str] = Field(None, description="Supabase anon key")
     SUPABASE_SERVICE_ROLE_KEY: Optional[str] = Field(None, description="Supabase service role key")
     SUPABASE_JWT_SECRET: Optional[str] = Field(None, description="Supabase JWT secret for token verification")
+    
+    # Enhanced Supabase Configuration
+    SUPABASE_URL: Optional[str] = Field(None, description="Supabase project URL (alternative to REACT_APP_SUPABASE_URL)")
+    SUPABASE_ANON_KEY: Optional[str] = Field(None, description="Supabase anon key (alternative to REACT_APP_SUPABASE_ANON_KEY)")
+    ALLOW_ANON: bool = Field(default=False, description="Allow anonymous users when Supabase auth fails or is not configured")
     
     # CORS Configuration
     CORS_ORIGINS: Union[str, List[str]] = Field(
@@ -171,16 +179,10 @@ class Settings(BaseSettings):
             if onrender_pattern not in hosts:
                 hosts.append(onrender_pattern)
         
-        # Add Fly.io domains if detected
-        fly_app_name = os.getenv('FLY_APP_NAME')
-        if fly_app_name:
-            fly_host = f"{fly_app_name}.fly.dev"
-            if fly_host not in hosts:
-                hosts.append(fly_host)
-            # Add wildcard Fly.io pattern
-            fly_pattern = '*.fly.dev'
-            if fly_pattern not in hosts:
-                hosts.append(fly_pattern)
+        # Add VPS domain if detected
+        server_name = os.getenv('SERVER_NAME')
+        if server_name and server_name not in hosts:
+            hosts.append(server_name)
         
         return hosts
     
@@ -241,18 +243,12 @@ class Settings(BaseSettings):
         if render_hostname and f"https://{render_hostname}" not in origins:
             origins.append(f"https://{render_hostname}")
         
-        # Add Fly.io domain if we're on Fly.io
-        fly_app_name = os.getenv('FLY_APP_NAME')
-        if fly_app_name:
-            fly_url = f"https://{fly_app_name}.fly.dev"
-            if fly_url not in origins:
-                origins.append(fly_url)
-            # Also add frontend if backend
-            if 'backend' in fly_app_name.lower():
-                frontend_app = fly_app_name.replace('backend', 'frontend')
-                frontend_url = f"https://{frontend_app}.fly.dev"
-                if frontend_url not in origins:
-                    origins.append(frontend_url)
+        # Add VPS domain if configured
+        server_name = os.getenv('SERVER_NAME')
+        if server_name:
+            server_url = f"https://{server_name}"
+            if server_url not in origins:
+                origins.append(server_url)
         
         # Add common Netlify patterns for frontend deployment
         netlify_patterns = [
@@ -313,9 +309,9 @@ class Settings(BaseSettings):
         return bool(os.getenv('RAILWAY_ENVIRONMENT'))
     
     @property
-    def is_fly(self) -> bool:
-        """Check if running on Fly.io platform"""
-        return bool(os.getenv('FLY_APP_NAME') or os.getenv('FLY_REGION'))
+    def is_vps(self) -> bool:
+        """Check if running on VPS (not a managed platform)"""
+        return not (self.is_render or self.is_railway)
     
     class Config:
         # Use absolute path to .env file as fallback

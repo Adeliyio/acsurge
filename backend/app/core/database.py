@@ -61,25 +61,36 @@ try:
     
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     
-    # Async engine for async endpoints (future-proofing)
+    # Async engine for async endpoints (only for PostgreSQL)
     async_database_url = settings.DATABASE_URL
     if async_database_url and async_database_url.startswith("postgresql://"):
         async_database_url = async_database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    
-    async_engine = create_async_engine(
-        async_database_url,
-        pool_pre_ping=True,
-        pool_recycle=3600,
-        pool_timeout=20,
-        pool_size=5,
-        max_overflow=10,
-        echo=False
-    )
-    AsyncSessionLocal = async_sessionmaker(
-        bind=async_engine,
-        class_=AsyncSession,
-        expire_on_commit=False
-    )
+        
+        try:
+            async_engine = create_async_engine(
+                async_database_url,
+                pool_pre_ping=True,
+                pool_recycle=3600,
+                pool_timeout=20,
+                pool_size=5,
+                max_overflow=10,
+                echo=False
+            )
+            AsyncSessionLocal = async_sessionmaker(
+                bind=async_engine,
+                class_=AsyncSession,
+                expire_on_commit=False
+            )
+            logger.info("Async PostgreSQL engine created successfully")
+        except Exception as async_err:
+            logger.warning(f"Async engine creation failed, falling back to sync: {async_err}")
+            async_engine = None
+            AsyncSessionLocal = None
+    else:
+        # SQLite or other non-async databases - don't create async engine
+        logger.info("Non-PostgreSQL database detected - async engine disabled")
+        async_engine = None
+        AsyncSessionLocal = None
     
 except Exception as e:
     # Handle database connection issues gracefully

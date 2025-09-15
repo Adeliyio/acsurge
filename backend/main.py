@@ -4,20 +4,50 @@ from fastapi.security import HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import uvicorn
-from app.api import auth, ads, analytics, subscriptions, health
+from app.api import auth, ads, analytics, subscriptions
+from app.api.health_fixed import router as health_router
+from app.api.v1.auth_status import router as auth_status_router
 from app.core.config import settings
-from app.core.database import engine, Base
 from app.core.logging import setup_logging, get_logger
 
-# Setup logging
+# Import enhanced components
+try:
+    from app.core.database_enhanced import create_all_tables
+except ImportError:
+    # Fallback to original database
+    from app.core.database import engine, Base
+    def create_all_tables():
+        if engine:
+            Base.metadata.create_all(bind=engine)
+
+try:
+    from app.core.error_handlers import setup_error_handling
+except ImportError:
+    setup_error_handling = None
+
+# Setup logging first
 setup_logging()
 logger = get_logger(__name__)
 
-# Create database tables (if engine is available)
-if engine is not None:
-    Base.metadata.create_all(bind=engine)
+# Import blog router conditionally
+blog_router = None
+if settings.ENABLE_BLOG:
+    try:
+        from app.blog import router as blog_module
+        blog_router = blog_module.router
+        logger.info("Blog router imported successfully")
+    except ImportError as e:
+        logger.warning(f"Blog router import failed: {e}")
 else:
-    logger.warning("Database engine not available - skipping table creation")
+    logger.info("Blog functionality disabled via settings")
+
+# Logging is now set up above
+
+# Create database tables (enhanced version)
+try:
+    create_all_tables()
+except Exception as e:
+    logger.warning(f"Database table creation skipped: {e}")
 
 app = FastAPI(
     title="AdCopySurge API",
@@ -26,6 +56,11 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc"
 )
+
+# Setup global error handling
+if setup_error_handling:
+    setup_error_handling(app, enable_debug=settings.DEBUG)
+    logger.info("Global error handling enabled")
 
 # CORS middleware with proper origin handling
 app.add_middleware(
@@ -38,11 +73,19 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(health.router, tags=["monitoring"])  # Health checks at root level
+app.include_router(health_router, tags=["monitoring"])  # Health checks at root level
+app.include_router(auth_status_router, prefix="/api", tags=["authentication"])  # Enhanced auth status
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(ads.router, prefix="/api/ads", tags=["ad-analysis"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["subscriptions"])
+
+# Include blog router if enabled and available
+if blog_router is not None:
+    app.include_router(blog_router, prefix="/api/blog", tags=["blog"])
+    logger.info("Blog router included with prefix /api/blog")
+else:
+    logger.info("Blog router not included - disabled or import failed")
 
 @app.get("/")
 async def root():
@@ -50,29 +93,17 @@ async def root():
 
 # Health endpoints now handled by health.router
 
-# Serve React static files
-static_files_path = Path(__file__).parent / "../frontend/build"
-if static_files_path.exists():
-    app.mount("/static", StaticFiles(directory=str(static_files_path)), name="static")
-    
-    # Serve favicon and manifest specifically
-    @app.get("/favicon.ico")
-    async def favicon():
-        from fastapi.responses import FileResponse
-        favicon_path = static_files_path / "favicon.ico"
-        if favicon_path.exists():
-            return FileResponse(favicon_path)
-        else:
-            raise HTTPException(status_code=404, detail="Favicon not found")
-    
-    @app.get("/manifest.json")
-    async def manifest():
-        from fastapi.responses import FileResponse
-        manifest_path = static_files_path / "manifest.json"
-        if manifest_path.exists():
-            return FileResponse(manifest_path)
-        else:
-            raise HTTPException(status_code=404, detail="Manifest not found")
+# Static files are served by Netlify in production
+# Keep this for local development only
+if settings.DEBUG and not settings.is_vps:
+    static_files_path = Path(__file__).parent / "../frontend/build"
+    if static_files_path.exists():
+        app.mount("/static", StaticFiles(directory=str(static_files_path)), name="static")
+        logger.info("Static file serving enabled for local development")
+    else:
+        logger.info("Frontend build directory not found - static serving disabled")
+else:
+    logger.info("Static file serving disabled - frontend served by Netlify")
 
 if __name__ == "__main__":
     uvicorn.run(

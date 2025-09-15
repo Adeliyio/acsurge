@@ -149,19 +149,20 @@ class BatchAnalysisResponse(BaseModel):
     results: List[AdAnalysisResponse]
     warning: Optional[str] = None
 
-# Import working analyzers
+# Import unified tools SDK instead of legacy analyzers
 import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 
-from app.services.readability_analyzer import ReadabilityAnalyzer
-from app.services.cta_analyzer import CTAAnalyzer
+# Use unified SDK
+from packages.tools_sdk import ToolOrchestrator, ToolRegistry, ToolInput
+from packages.tools_sdk.tools import register_all_tools
 from app.utils.text_parser import parse_ad_copy_from_text
 from app.utils.file_extract import extract_text_from_file, is_supported_file
 
-# Initialize analyzers
-readability_analyzer = ReadabilityAnalyzer()
-cta_analyzer = CTAAnalyzer()
+# Initialize unified SDK
+register_all_tools()
+orchestrator = ToolOrchestrator()
 
 @app.get("/")
 async def root():
@@ -177,54 +178,66 @@ async def health_check():
 
 @app.post("/api/ads/analyze", response_model=AdAnalysisResponse)
 async def analyze_ad(ad_input: AdInput):
-    """Analyze an ad and generate alternatives - MVP version"""
+    """Analyze an ad using unified SDK orchestrator"""
     try:
-        # Combine ad text for analysis
-        full_text = f"{ad_input.headline} {ad_input.body_text} {ad_input.cta}"
-        
-        # Run readability analysis
-        clarity_analysis = readability_analyzer.analyze_clarity(full_text)
-        power_analysis = readability_analyzer.analyze_power_words(full_text)
-        
-        # Run CTA analysis
-        cta_analysis = cta_analyzer.analyze_cta(ad_input.cta, ad_input.platform)
-        
-        # Calculate platform fit (simplified)
-        platform_fit_score = calculate_platform_fit(ad_input)
-        
-        # Calculate scores
-        scores = AdScore(
-            clarity_score=clarity_analysis['clarity_score'],
-            persuasion_score=power_analysis.get('power_score', 50),
-            emotion_score=calculate_emotion_score(full_text),  # Simplified
-            cta_strength=cta_analysis['cta_strength_score'],
-            platform_fit_score=platform_fit_score,
-            overall_score=calculate_overall_score(
-                clarity_analysis['clarity_score'],
-                power_analysis.get('power_score', 50),
-                calculate_emotion_score(full_text),
-                cta_analysis['cta_strength_score'],
-                platform_fit_score
-            )
+        # Create unified tool input
+        tool_input = ToolInput(
+            headline=ad_input.headline,
+            body_text=ad_input.body_text, 
+            cta=ad_input.cta,
+            platform=ad_input.platform,
+            target_audience=ad_input.target_audience,
+            industry=ad_input.industry
         )
         
-        # Generate feedback
-        feedback = generate_feedback(clarity_analysis, cta_analysis, scores)
+        # Run analysis using SDK orchestrator
+        tools_to_run = ["readability_analyzer", "cta_analyzer"]
         
-        # Generate alternatives (template-based)
+        try:
+            result = await orchestrator.run_tools(
+                tool_input,
+                tools_to_run,
+                execution_mode="parallel"
+            )
+            
+            # Extract scores from SDK result
+            clarity_score = result.results.get('readability_analyzer', {}).get('clarity_score', 50)
+            persuasion_score = result.results.get('readability_analyzer', {}).get('power_score', 50)
+            cta_strength = result.results.get('cta_analyzer', {}).get('cta_strength_score', 50)
+            
+        except Exception as sdk_error:
+            # Fallback to simplified scoring if SDK fails
+            print(f"SDK analysis failed, using fallback: {sdk_error}")
+            clarity_score = 50
+            persuasion_score = 50
+            cta_strength = 50
+        
+        # Calculate remaining scores  
+        emotion_score = calculate_emotion_score(f"{ad_input.headline} {ad_input.body_text}")
+        platform_fit_score = calculate_platform_fit(ad_input)
+        overall_score = calculate_overall_score(clarity_score, persuasion_score, emotion_score, cta_strength, platform_fit_score)
+        
+        # Build response
+        scores = AdScore(
+            clarity_score=clarity_score,
+            persuasion_score=persuasion_score,
+            emotion_score=emotion_score,
+            cta_strength=cta_strength,
+            platform_fit_score=platform_fit_score,
+            overall_score=overall_score
+        )
+        
+        # Generate feedback and alternatives
+        feedback = generate_feedback_simple(scores)
         alternatives = generate_template_alternatives(ad_input)
-        
-        # Generate quick wins
-        quick_wins = []
-        quick_wins.extend(clarity_analysis.get('recommendations', [])[:2])
-        quick_wins.extend(cta_analysis.get('recommendations', [])[:1])
+        quick_wins = generate_quick_wins(scores, ad_input)
         
         return AdAnalysisResponse(
             analysis_id=f"analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             scores=scores,
             feedback=feedback,
             alternatives=alternatives,
-            quick_wins=quick_wins[:3]
+            quick_wins=quick_wins
         )
         
     except Exception as e:
@@ -296,8 +309,48 @@ def calculate_overall_score(clarity: float, persuasion: float, emotion: float, c
     
     return round(overall, 1)
 
+def generate_feedback_simple(scores: AdScore) -> str:
+    """Generate simplified human-readable feedback"""
+    feedback_parts = []
+    
+    if scores.overall_score >= 80:
+        feedback_parts.append("Excellent ad copy! Your content is well-optimized.")
+    elif scores.overall_score >= 60:
+        feedback_parts.append("Good ad copy with room for improvement.")
+    else:
+        feedback_parts.append("Your ad copy needs optimization to improve performance.")
+    
+    if scores.clarity_score < 70:
+        feedback_parts.append("Consider simplifying your language for better readability.")
+    
+    if scores.cta_strength < 70:
+        feedback_parts.append("Your call-to-action could be more compelling.")
+    
+    if scores.emotion_score < 70:
+        feedback_parts.append("Adding more emotional triggers could improve engagement.")
+        
+    return " ".join(feedback_parts)
+
+def generate_quick_wins(scores: AdScore, ad_input: AdInput) -> List[str]:
+    """Generate actionable quick wins based on scores"""
+    quick_wins = []
+    
+    if scores.clarity_score < 70:
+        quick_wins.append("Shorten sentences and use simpler words")
+    
+    if scores.cta_strength < 70:
+        quick_wins.append("Use stronger action words in your CTA")
+    
+    if scores.emotion_score < 70:
+        quick_wins.append("Add emotional words like 'amazing', 'exclusive', or 'proven'")
+    
+    if len(ad_input.headline) > 50:
+        quick_wins.append("Consider shortening your headline for better impact")
+        
+    return quick_wins[:3]
+
 def generate_feedback(clarity_analysis: dict, cta_analysis: dict, scores: AdScore) -> str:
-    """Generate human-readable feedback"""
+    """Legacy feedback function - kept for compatibility"""
     feedback_parts = []
     
     if scores.overall_score >= 80:
