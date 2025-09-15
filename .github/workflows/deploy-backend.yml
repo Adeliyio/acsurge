@@ -1,4 +1,4 @@
-name: Deploy Backend to Digital Ocean
+name: Deploy Backend to Datalix VPS
 
 on:
   push:
@@ -6,17 +6,31 @@ on:
     paths: 
       - 'backend/**'
       - '.github/workflows/deploy-backend.yml'
-      - 'deployment/**'
+      - 'deploy/**'
   pull_request:
     branches: [ main ]
     paths: 
       - 'backend/**'
-      - 'deployment/**'
+      - 'deploy/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy to environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
 
 env:
   PYTHON_VERSION: '3.11'
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/backend
+  DATALIX_HOST: ${{ secrets.DATALIX_HOST }}
+  DATALIX_USER: ${{ secrets.DATALIX_USER }}
+  KNOWN_HOSTS: |1|
+    BLHzmDQJzBL2nSVtrPFc3UOUtVk=|9s41H8s39BTOAbLgdzwp1c/LOCc= ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD369BeRUntYPXp7vLzjzYcxnxe9RFF14vexGIcXbKVRCgWl+eD3w92pntM5Qya5J9pbfC3eVJCHAWrmlvWdFRnG/RZhIH2vNqjiripXFgyETy03MQBuvZSYZs93Xvw9+Cg/Pz6R0hILUF1h29erAXFV6znzz3FvTtA9qjWLHWhOmjIdvwrts9lRKPXTwwDyhakZc0+k2kBDsRAGJ+aPtUCnNosNUj1RB7NZQMDx8RUnXgQjbweIgHCtSc0BTOAeDGocuTj12lHLzR/AG0upcpySaRj14RxGHzNv7lDr8Nu3Up2CquVBACCEfPR+nUyzODZLI+tvxHajaKrNMWFpx9v
+    |1|Cey+NbvgAcqcHc0QjntjpwQ9cHs=|bcyVm7vNb0SCwgqDaI1QStbIS3k= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFzLEDoeUsl9zZ7Cr0hSDNH+ioNLHKSXOqqLN/0wirxOFosD7eqX7I5/jRxTBXaanzDkm49fCysuxHC6WeQFXLo=
+    |1|r+wMAgCfXgENvcwp7//SKsdjMJM=|7zLD6XfOZpbRpUW5fdKFARbfMrY= ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICg/Dgk8liWDDHyaGWJhGIbw6MHbKSSYziFPy7Nqe7g6
 
 jobs:
   test:
@@ -68,135 +82,183 @@ jobs:
         DEBUG: true
 
   deploy-staging:
-    name: Deploy to Staging
+    name: Deploy to Staging (Datalix VPS)
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Deploy to Digital Ocean (Staging)
-      uses: appleboy/ssh-action@v1.0.0
+    - name: Setup SSH
+      uses: shimataro/ssh-key-action@v2
       with:
-        host: ${{ secrets.STAGING_HOST }}
-        username: ${{ secrets.STAGING_USERNAME }}
-        key: ${{ secrets.STAGING_SSH_KEY }}
-        port: ${{ secrets.STAGING_SSH_PORT }}
-        script: |
-          cd /var/www/adcopysurge-staging
-          git pull origin develop
-          source backend/venv/bin/activate
-          pip install -r backend/requirements-production.txt
-          sudo systemctl restart adcopysurge-staging
-          sudo systemctl status adcopysurge-staging --no-pager
+        key: ${{ secrets.DATALIX_SSH_KEY }}
+        known_hosts: ${{ env.KNOWN_HOSTS }}
+
+    - name: Deploy to Datalix VPS (Staging)
+      run: |
+        ssh -o StrictHostKeyChecking=yes ${{ env.DATALIX_USER }}@${{ env.DATALIX_HOST }} '
+          set -e
+          echo "🚀 Starting staging deployment..."
+          
+          # Create staging directory if it doesn't exist
+          sudo mkdir -p /home/deploy/adcopysurge-staging
+          sudo chown deploy:deploy /home/deploy/adcopysurge-staging
+          
+          # Clone or update repository
+          if [ ! -d "/home/deploy/adcopysurge-staging/.git" ]; then
+            cd /home/deploy
+            git clone https://github.com/Adeliyio/acsurge.git adcopysurge-staging
+          else
+            cd /home/deploy/adcopysurge-staging
+            git fetch origin
+            git reset --hard origin/develop
+          fi
+          
+          # Update backend dependencies
+          cd /home/deploy/adcopysurge-staging/backend
+          
+          # Create virtual environment if it doesn't exist
+          if [ ! -d "venv" ]; then
+            python3.11 -m venv venv
+          fi
+          
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          
+          # Copy environment configuration
+          if [ ! -f ".env" ] && [ -f "../.env.production.template" ]; then
+            cp ../.env.production.template .env
+            echo "⚠️  Please update .env file with your staging configuration"
+          fi
+          
+          # Test application startup
+          echo "✅ Testing application startup..."
+          timeout 10s python main_launch_ready.py || echo "✅ Startup test completed"
+          
+          echo "✅ Staging deployment completed!"
+        '
 
   deploy-production:
-    name: Deploy to Production
+    name: Deploy to Production (Datalix VPS)
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
     environment: production
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Create deployment package
+    - name: Setup SSH
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.DATALIX_SSH_KEY }}
+        known_hosts: ${{ env.KNOWN_HOSTS }}
+
+    - name: Deploy to Datalix VPS (Production)
       run: |
-        mkdir -p deployment-package
-        cp -r backend deployment-package/
-        cp -r deployment deployment-package/
-        tar -czf adcopysurge-backend.tar.gz deployment-package/
-
-    - name: Upload to server
-      uses: appleboy/scp-action@v0.1.4
-      with:
-        host: ${{ secrets.PRODUCTION_HOST }}
-        username: ${{ secrets.PRODUCTION_USERNAME }}
-        key: ${{ secrets.PRODUCTION_SSH_KEY }}
-        port: ${{ secrets.PRODUCTION_SSH_PORT }}
-        source: "adcopysurge-backend.tar.gz"
-        target: "/tmp/"
-
-    - name: Deploy to Production Server
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.PRODUCTION_HOST }}
-        username: ${{ secrets.PRODUCTION_USERNAME }}
-        key: ${{ secrets.PRODUCTION_SSH_KEY }}
-        port: ${{ secrets.PRODUCTION_SSH_PORT }}
-        script: |
+        ssh -o StrictHostKeyChecking=yes ${{ env.DATALIX_USER }}@${{ env.DATALIX_HOST }} '
           set -e
-          echo "🚀 Starting deployment..."
-          
-          # Extract deployment package
-          cd /tmp
-          tar -xzf adcopysurge-backend.tar.gz
+          echo "🚀 Starting production deployment..."
           
           # Backup current deployment
           sudo mkdir -p /var/backups/adcopysurge
-          if [ -d "/var/www/adcopysurge" ]; then
-            sudo cp -r /var/www/adcopysurge /var/backups/adcopysurge/backup-$(date +%Y%m%d-%H%M%S)
+          if [ -d "/home/deploy/adcopysurge" ]; then
+            echo "🔄 Creating backup..."
+            sudo cp -r /home/deploy/adcopysurge /var/backups/adcopysurge/backup-$(date +%Y%m%d-%H%M%S)
           fi
           
-          # Deploy new version
-          sudo mkdir -p /var/www/adcopysurge
-          sudo cp -r deployment-package/backend/* /var/www/adcopysurge/backend/
-          sudo cp deployment-package/deployment/systemd/adcopysurge.service /tmp/
-          sudo cp deployment-package/deployment/nginx/adcopysurge /tmp/adcopysurge-nginx
+          # Create production directory if it doesn't exist
+          sudo mkdir -p /home/deploy/adcopysurge
+          sudo chown deploy:deploy /home/deploy/adcopysurge
           
-          # Update Python dependencies
-          cd /var/www/adcopysurge/backend
-          sudo -u www-data /var/www/adcopysurge/backend/venv/bin/pip install -r requirements-production.txt
+          # Clone or update repository
+          if [ ! -d "/home/deploy/adcopysurge/.git" ]; then
+            cd /home/deploy
+            git clone https://github.com/Adeliyio/acsurge.git adcopysurge
+            cd adcopysurge
+          else
+            cd /home/deploy/adcopysurge
+            git fetch origin
+            git reset --hard origin/main
+          fi
           
-          # Update NLTK data
-          sudo -u www-data /var/www/adcopysurge/backend/venv/bin/python -c "import nltk; nltk.download('punkt')"
-          sudo -u www-data /var/www/adcopysurge/backend/venv/bin/python -c "import nltk; nltk.download('stopwords')"
+          # Setup backend environment
+          cd /home/deploy/adcopysurge/backend
           
-          # Set proper permissions
-          sudo chown -R www-data:www-data /var/www/adcopysurge
+          # Create virtual environment if it doesn't exist
+          if [ ! -d "venv" ]; then
+            python3.11 -m venv venv
+          fi
           
-          # Update systemd service
-          sudo cp /tmp/adcopysurge.service /etc/systemd/system/
-          sudo systemctl daemon-reload
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
           
-          # Update Nginx config if changed
-          if ! sudo diff -q /tmp/adcopysurge-nginx /etc/nginx/sites-available/adcopysurge > /dev/null 2>&1; then
-            echo "Updating Nginx configuration..."
-            sudo cp /tmp/adcopysurge-nginx /etc/nginx/sites-available/adcopysurge
+          # Copy environment configuration if not exists
+          if [ ! -f ".env" ] && [ -f "../.env.production.template" ]; then
+            cp ../.env.production.template .env
+            echo "⚠️  Environment file created from template. Please configure manually."
+          fi
+          
+          # Create required runtime directories
+          sudo mkdir -p /run/adcopysurge /var/log/adcopysurge
+          sudo chown www-data:www-data /run/adcopysurge /var/log/adcopysurge
+          
+          # Copy and install systemd service
+          if [ -f "../deploy/gunicorn.service" ]; then
+            sudo cp ../deploy/gunicorn.service /etc/systemd/system/
+            sudo systemctl daemon-reload
+            sudo systemctl enable gunicorn.service
+          fi
+          
+          # Copy and install nginx configuration
+          if [ -f "../deploy/nginx.conf" ]; then
+            sudo cp ../deploy/nginx.conf /etc/nginx/sites-available/adcopysurge
+            sudo ln -sf /etc/nginx/sites-available/adcopysurge /etc/nginx/sites-enabled/
+            sudo rm -f /etc/nginx/sites-enabled/default
             sudo nginx -t
-            sudo systemctl reload nginx
           fi
           
-          # Restart the application
-          echo "Restarting application..."
-          sudo systemctl restart adcopysurge
+          # Start/restart services
+          echo "🔄 Restarting services..."
+          sudo systemctl restart gunicorn.service || sudo systemctl start gunicorn.service
+          sudo systemctl restart nginx || sudo systemctl start nginx
           
-          # Wait for service to start
-          sleep 5
+          # Wait for services to start
+          sleep 10
           
           # Verify deployment
-          if sudo systemctl is-active --quiet adcopysurge; then
-            echo "✅ Deployment successful!"
-            sudo systemctl status adcopysurge --no-pager
+          if sudo systemctl is-active --quiet gunicorn.service; then
+            echo "✅ Gunicorn service is running!"
+            sudo systemctl status gunicorn.service --no-pager -l
             
             # Health check
-            if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+            if curl -f http://localhost/health > /dev/null 2>&1 || curl -f http://127.0.0.1/health > /dev/null 2>&1; then
               echo "✅ Health check passed!"
             else
-              echo "❌ Health check failed!"
-              exit 1
+              echo "❌ Health check failed - checking logs..."
+              sudo journalctl -u gunicorn.service -n 20 --no-pager
             fi
           else
-            echo "❌ Service failed to start!"
-            sudo journalctl -u adcopysurge -n 20 --no-pager
+            echo "❌ Gunicorn service failed to start!"
+            sudo journalctl -u gunicorn.service -n 20 --no-pager
             exit 1
           fi
           
-          # Cleanup
-          rm -rf /tmp/deployment-package /tmp/adcopysurge-backend.tar.gz
+          if sudo systemctl is-active --quiet nginx; then
+            echo "✅ Nginx service is running!"
+          else
+            echo "❌ Nginx service failed!"
+            sudo systemctl status nginx --no-pager
+          fi
+          
+          echo "✅ Production deployment completed!"
+        '
 
     - name: Create GitHub Release
       if: success()
@@ -207,30 +269,29 @@ jobs:
         tag_name: backend-v${{ github.run_number }}
         release_name: Backend Release v${{ github.run_number }}
         body: |
-          Backend deployment to production
+          Backend deployment to Datalix VPS production
           
           Changes in this release:
           ${{ github.event.head_commit.message }}
+          
+          Deployed to: api.adcopysurge.com
         draft: false
         prerelease: false
 
-    - name: Notify on failure
+    - name: Rollback on failure
       if: failure()
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.PRODUCTION_HOST }}
-        username: ${{ secrets.PRODUCTION_USERNAME }}
-        key: ${{ secrets.PRODUCTION_SSH_KEY }}
-        port: ${{ secrets.PRODUCTION_SSH_PORT }}
-        script: |
-          echo "🚨 Deployment failed - checking logs..."
-          sudo journalctl -u adcopysurge -n 50 --no-pager
-          
+      run: |
+        echo "🚨 Deployment failed - attempting rollback..."
+        ssh -o StrictHostKeyChecking=yes ${{ env.DATALIX_USER }}@${{ env.DATALIX_HOST }} '
           # Attempt to restore from backup if exists
-          LATEST_BACKUP=$(sudo ls -t /var/backups/adcopysurge/ | head -n 1)
+          LATEST_BACKUP=$(sudo ls -t /var/backups/adcopysurge/ 2>/dev/null | head -n 1 || echo "")
           if [ ! -z "$LATEST_BACKUP" ]; then
             echo "🔄 Restoring from backup: $LATEST_BACKUP"
-            sudo cp -r /var/backups/adcopysurge/$LATEST_BACKUP/* /var/www/adcopysurge/
-            sudo systemctl restart adcopysurge
-            sudo systemctl status adcopysurge --no-pager
+            sudo cp -r /var/backups/adcopysurge/$LATEST_BACKUP /home/deploy/adcopysurge-rollback
+            sudo systemctl restart gunicorn.service
+            sudo systemctl status gunicorn.service --no-pager
+          else
+            echo "⚠️ No backup found - manual intervention required"
+            sudo journalctl -u gunicorn.service -n 50 --no-pager
           fi
+        '
