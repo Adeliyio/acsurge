@@ -90,6 +90,8 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
       userEmail: user?.email
     });
     
+    console.log('🔍 About to check session...');
+    
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       console.log('🔑 Current session status:', {
@@ -105,23 +107,38 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
         console.error('🚫 No valid session found - aborting upload');
         return;
       }
+      
+      console.log('✅ Session validation passed - proceeding with upload');
     } catch (authError) {
       console.error('🔥 Failed to check authentication:', authError);
       toast.error('Authentication check failed. Please try signing in again.');
       return;
     }
 
+    console.log('🚀 Setting uploading state to true and starting file processing...');
     setUploading(true);
     const allResults = [];
 
     try {
+      console.log('📁 Processing', files.length, 'files:', files.map(f => ({name: f.file.name, status: f.status, id: f.id})));
+      
       for (const fileItem of files) {
-        if (fileItem.status === 'success') continue;
+        if (fileItem.status === 'success') {
+          console.log('⏭️ Skipping already successful file:', fileItem.file.name);
+          continue;
+        }
 
+        console.log('📋 Processing file:', fileItem.file.name, 'with ID:', fileItem.id);
+        
         // Update file status
-        setFiles(prev => prev.map(f => 
-          f.id === fileItem.id ? { ...f, status: 'uploading', progress: 0 } : f
-        ));
+        console.log('🔄 Updating file status to uploading for:', fileItem.file.name);
+        setFiles(prev => {
+          const updated = prev.map(f => 
+            f.id === fileItem.id ? { ...f, status: 'uploading', progress: 0 } : f
+          );
+          console.log('📋 Updated files state:', updated.map(f => ({name: f.file.name, status: f.status, progress: f.progress})));
+          return updated;
+        });
 
         try {
           const formData = new FormData();
