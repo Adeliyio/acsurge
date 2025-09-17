@@ -413,8 +413,11 @@ class ApiService {
   // Parse uploaded files
   async parseFile(formData, options = {}, userId = null) {
     try {
-      // Skip redundant auth check - caller already verified authentication
-      // The request interceptor will add the auth token automatically
+      // Get current user and add auth token
+      const { data: { user, session } } = await supabase.auth.getUser();
+      if (!user || !session) {
+        throw new Error('User not authenticated');
+      }
       
       if (userId) {
         formData.append('user_id', userId);
@@ -423,6 +426,7 @@ class ApiService {
       const config = {
         headers: {
           'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${session.access_token}`
         },
         timeout: options.timeout || 60000, // Default 60 second timeout
         ...options // Spread other options like onUploadProgress
