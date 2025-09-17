@@ -30,8 +30,11 @@ import {
 import { useDropzone } from 'react-dropzone';
 import toast from 'react-hot-toast';
 import apiService from '../../services/apiService';
+import { useAuth } from '../../services/authContext';
+import { supabase } from '../../lib/supabaseClient';
 
 const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'facebook' }) => {
+  const { user, isAuthenticated } = useAuth();
   const [platform, setPlatform] = useState(defaultPlatform);
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -79,6 +82,34 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
       toast.error('Please select files to upload');
       return;
     }
+    
+    // Debug authentication state before processing
+    console.log('🔍 Pre-upload auth check:', {
+      isAuthenticated,
+      hasUser: !!user,
+      userEmail: user?.email
+    });
+    
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      console.log('🔑 Current session status:', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        tokenExpiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : null,
+        tokenIsValid: session?.expires_at ? new Date(session.expires_at * 1000) > new Date() : false,
+        sessionError: error?.message
+      });
+      
+      if (!session?.access_token) {
+        toast.error('Authentication required. Please sign in again.');
+        console.error('🚫 No valid session found - aborting upload');
+        return;
+      }
+    } catch (authError) {
+      console.error('🔥 Failed to check authentication:', authError);
+      toast.error('Authentication check failed. Please try signing in again.');
+      return;
+    }
 
     setUploading(true);
     const allResults = [];
@@ -106,11 +137,14 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
             ));
           }, 200);
 
+          console.log('📤 Starting file upload for:', fileItem.file.name);
+          
           const result = await apiService.parseFile(formData, {
             onUploadProgress: (progressEvent) => {
               const percentCompleted = Math.round(
                 (progressEvent.loaded * 100) / progressEvent.total
               );
+              console.log(`📊 Upload progress for ${fileItem.file.name}: ${percentCompleted}%`);
               setFiles(prev => prev.map(f => 
                 f.id === fileItem.id 
                   ? { ...f, progress: percentCompleted } 
@@ -119,6 +153,8 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
             },
             timeout: 30000 // 30 second timeout
           });
+          
+          console.log('✅ File upload completed for:', fileItem.file.name, result);
           
           clearInterval(progressInterval);
           
@@ -135,14 +171,42 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
             throw new Error('No ad copy found in file');
           }
         } catch (error) {
-          console.error(`Error processing file ${fileItem.file.name}:`, error);
+          console.error(`❌ Error processing file ${fileItem.file.name}:`, error);
+          
+          // Log more detailed error information
+          if (error.response) {
+            console.error('📊 API Error Response:', {
+              status: error.response.status,
+              statusText: error.response.statusText,
+              data: error.response.data,
+              headers: error.response.headers
+            });
+          }
+          
+          // More detailed error messages based on error type
+          let errorMessage = error.message;
+          if (error.response?.status === 401) {
+            errorMessage = 'Authentication failed. Please log in again.';
+            console.warn('🔐 Authentication error - user may need to re-login');
+          } else if (error.response?.status === 403) {
+            errorMessage = 'Access denied. Check your subscription or permissions.';
+          } else if (error.response?.status === 413) {
+            errorMessage = 'File too large. Please try with a smaller file.';
+          } else if (error.code === 'ECONNABORTED') {
+            errorMessage = 'Upload timed out. Please check your connection and try again.';
+          } else if (error.message.includes('Network Error')) {
+            errorMessage = 'Network error. Please check your internet connection.';
+          }
           
           // Update file status to error
           setFiles(prev => prev.map(f => 
             f.id === fileItem.id 
-              ? { ...f, status: 'error', progress: 0, error: error.message } 
+              ? { ...f, status: 'error', progress: 0, error: errorMessage } 
               : f
           ));
+          
+          // Show user-friendly toast message
+          toast.error(`Failed to process ${fileItem.file.name}: ${errorMessage}`);
         }
       }
 

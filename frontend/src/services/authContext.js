@@ -95,21 +95,53 @@ export const useAuth = () => {
 // Network connectivity check utility
 const checkNetworkConnectivity = async () => {
   try {
-    // Try a simple fetch to a reliable endpoint
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    // First check the navigator.onLine status (instant check)
+    if (!navigator.onLine) {
+      console.warn('⚠️ Browser reports offline status');
+      return false;
+    }
     
-    const response = await fetch('https://httpbin.org/get', {
-      method: 'GET',
-      signal: controller.signal,
-      cache: 'no-cache'
+    // Try a simple fetch to a reliable endpoint with careful timeout handling
+    const controller = new AbortController();
+    let timeoutId;
+    
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        // Only abort if the request is still pending
+        if (!controller.signal.aborted) {
+          controller.abort('Network connectivity check timeout');
+        }
+        reject(new Error('Network check timeout'));
+      }, 2000); // Reduced timeout to 2 seconds
     });
     
-    clearTimeout(timeoutId);
-    return response.ok;
+    const fetchPromise = fetch('https://httpbin.org/get', {
+      method: 'GET',
+      signal: controller.signal,
+      cache: 'no-cache',
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
+    
+    try {
+      const response = await Promise.race([fetchPromise, timeoutPromise]);
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch (raceError) {
+      clearTimeout(timeoutId);
+      // Don't log abort errors as warnings since they're expected
+      if (raceError.name === 'AbortError' || raceError.message.includes('timeout')) {
+        console.log('ℹ️ Network connectivity check timed out (expected behavior)');
+      } else {
+        console.warn('⚠️ Network connectivity check failed:', raceError.message);
+      }
+      return false;
+    }
   } catch (error) {
-    console.warn('⚠️ Network connectivity check failed:', error.message);
-    return false;
+    // Fallback - assume we have connectivity if the check itself fails
+    console.warn('⚠️ Network connectivity check error:', error.message, '- assuming connected');
+    return true; // Assume connected on check failure
   }
 };
 
@@ -215,10 +247,14 @@ export const AuthProvider = ({ children }) => {
             console.log(`🚀 Trying ${attempt.name} (${attempt.timeout}ms timeout)...`);
             const startTime = Date.now();
             
-            // Create timeout promise
+            // Create timeout promise with cleaner logging
             const timeoutPromise = new Promise((_, reject) => {
               timeoutId = setTimeout(() => {
-                console.warn(`⏰ ${attempt.name} timed out after ${attempt.timeout}ms`);
+                // Only log timeout warnings for methods that are expected to succeed quickly
+                const shouldWarn = attempt.name !== 'Direct user check' || attempt.timeout < 8000;
+                if (shouldWarn) {
+                  console.log(`⏱️ ${attempt.name} timed out after ${attempt.timeout}ms (trying next method)`);
+                }
                 reject(new Error(`${attempt.name} timed out`));
               }, attempt.timeout);
             });
@@ -263,7 +299,12 @@ export const AuthProvider = ({ children }) => {
             break; // No session found, no need to try other methods
             
           } catch (attemptError) {
-            console.warn(`⚠️ ${attempt.name} failed:`, attemptError.message);
+            // Differentiate between timeout errors and actual failures
+            if (attemptError.message.includes('timed out')) {
+              console.log(`⏱️ ${attempt.name} timed out, trying next method`);
+            } else {
+              console.warn(`⚠️ ${attempt.name} failed:`, attemptError.message);
+            }
             if (timeoutId) {
               clearTimeout(timeoutId);
               timeoutId = null;

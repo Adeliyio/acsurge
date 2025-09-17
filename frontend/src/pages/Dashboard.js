@@ -32,6 +32,7 @@ import {
 import StartIcon from '../components/icons/StartIcon';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
+import { supabase } from '../lib/supabaseClient';
 import { useDashboardAnalytics, useRefreshProjects } from '../hooks/useProjects';
 import ErrorBoundary from '../components/ErrorBoundary';
 import SmartOnboarding from '../components/onboarding/SmartOnboarding';
@@ -160,18 +161,35 @@ const Dashboard = () => {
   // Check if user needs onboarding
   useEffect(() => {
     const checkOnboardingNeeded = () => {
-      const hasCompletedOnboarding = localStorage.getItem('adcopysurge_onboarding_completed');
+      // Check multiple sources for onboarding completion
+      const hasCompletedOnboardingLocal = localStorage.getItem('adcopysurge_onboarding_completed');
+      const hasCompletedOnboardingDB = subscription?.has_completed_onboarding;
       const isNewUser = !dashboardData?.totalAnalyses || dashboardData.totalAnalyses === 0;
       
-      // Show onboarding for new users who haven't completed it
-      if (isNewUser && !hasCompletedOnboarding && !isDashboardLoading) {
+      console.log('🔍 Checking onboarding status:', {
+        hasCompletedOnboardingLocal: !!hasCompletedOnboardingLocal,
+        hasCompletedOnboardingDB: !!hasCompletedOnboardingDB,
+        isNewUser,
+        isDashboardLoading
+      });
+      
+      // Show onboarding only for truly new users who haven't completed it anywhere
+      const shouldShowOnboarding = isNewUser && 
+                                   !hasCompletedOnboardingLocal && 
+                                   !hasCompletedOnboardingDB && 
+                                   !isDashboardLoading;
+      
+      if (shouldShowOnboarding) {
+        console.log('📋 Showing onboarding for new user');
         // Small delay to ensure dashboard is loaded
         setTimeout(() => setShowOnboarding(true), 1000);
+      } else {
+        console.log('🚫 Skipping onboarding - returning user or already completed');
       }
     };
     
     checkOnboardingNeeded();
-  }, [dashboardData, isDashboardLoading]);
+  }, [dashboardData, isDashboardLoading, subscription]);
 
   // Static tips - these could also come from API in the future
   const tips = [
@@ -195,8 +213,37 @@ const Dashboard = () => {
     navigate('/analyze');
   };
   
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = async () => {
+    // Always mark as completed in localStorage 
     localStorage.setItem('adcopysurge_onboarding_completed', 'true');
+    
+    // Also try to mark as completed in the database if not already done
+    if (user && !subscription?.has_completed_onboarding) {
+      try {
+        const { error } = await supabase
+          .from('user_profiles')
+          .upsert({
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
+            has_completed_onboarding: true,
+            onboarding_completed_at: new Date().toISOString(),
+            subscription_tier: subscription?.subscription_tier || 'free',
+            subscription_active: subscription?.subscription_active !== false
+          }, {
+            onConflict: 'id'
+          });
+        
+        if (error) {
+          console.error('Error marking onboarding as completed:', error);
+        } else {
+          console.log('✓ Onboarding marked as completed in database');
+        }
+      } catch (error) {
+        console.error('Error updating onboarding status:', error);
+      }
+    }
+    
     setShowOnboarding(false);
   };
 
@@ -206,7 +253,7 @@ const Dashboard = () => {
       <SmartOnboarding 
         open={showOnboarding}
         onClose={handleOnboardingComplete}
-        userType={dashboardData?.totalAnalyses > 0 ? 'returning' : 'new'}
+        userType={(dashboardData?.totalAnalyses > 0 || subscription?.has_completed_onboarding) ? 'returning' : 'new'}
       />
       
       <Grid container spacing={3}>

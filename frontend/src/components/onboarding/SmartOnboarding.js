@@ -181,9 +181,18 @@ const SmartOnboarding = ({ open, onClose, userType = 'new' }) => {
     }
   };
 
-  const completeOnboarding = async () => {
+  const completeOnboarding = async (skipWithDefaults = false) => {
     setLoading(true);
     try {
+      // Use default values if skipping
+      const profileData = skipWithDefaults ? {
+        company: formData.company || 'Not specified',
+        industry: formData.industry || 'Other',
+        role: formData.role || 'Not specified',
+        team_size: formData.teamSize || '1',
+        goals: formData.goals.length > 0 ? formData.goals : ['improve_performance']
+      } : formData;
+      
       // Save onboarding data to user profile
       const { error } = await supabase
         .from('user_profiles')
@@ -191,11 +200,11 @@ const SmartOnboarding = ({ open, onClose, userType = 'new' }) => {
           id: user.id,
           email: user.email,
           full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
-          company: formData.company,
-          industry: formData.industry,
-          role: formData.role,
-          team_size: formData.teamSize,
-          goals: formData.goals,
+          company: profileData.company,
+          industry: profileData.industry,
+          role: profileData.role,
+          team_size: profileData.team_size,
+          goals: profileData.goals,
           has_completed_onboarding: true,
           onboarding_completed_at: new Date().toISOString(),
           subscription_tier: 'free',
@@ -213,7 +222,7 @@ const SmartOnboarding = ({ open, onClose, userType = 'new' }) => {
       // Mark onboarding as completed in localStorage
       localStorage.setItem('adcopysurge_onboarding_completed', 'true');
       
-      toast.success('Welcome to AdCopySurge! 🎉');
+      toast.success(skipWithDefaults ? 'Onboarding skipped - you can update preferences later!' : 'Welcome to AdCopySurge! 🎉');
       
       // Close the onboarding modal first
       onClose();
@@ -235,6 +244,10 @@ const SmartOnboarding = ({ open, onClose, userType = 'new' }) => {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const skipOnboarding = () => {
+    completeOnboarding(true);
   };
 
   const renderStepContent = (step) => {
@@ -285,15 +298,26 @@ const SmartOnboarding = ({ open, onClose, userType = 'new' }) => {
               </Grid>
             </Grid>
             
-            <Button 
-              variant="contained" 
-              size="large" 
-              onClick={handleNext} 
-              endIcon={<ArrowForward />}
-              sx={{ mt: 4, px: 4, py: 1.5, fontSize: '1.1rem' }}
-            >
-              Let's Get Started
-            </Button>
+            <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <Button 
+                variant="contained" 
+                size="large" 
+                onClick={handleNext} 
+                endIcon={<ArrowForward />}
+                sx={{ px: 4, py: 1.5, fontSize: '1.1rem' }}
+              >
+                Let's Get Started
+              </Button>
+              <Button
+                variant="text"
+                color="secondary"
+                onClick={skipOnboarding}
+                disabled={loading}
+                sx={{ textTransform: 'none', fontSize: '0.9rem' }}
+              >
+                Skip setup for now
+              </Button>
+            </Box>
           </Box>
         );
 
@@ -583,7 +607,7 @@ const SmartOnboarding = ({ open, onClose, userType = 'new' }) => {
   return (
     <Dialog 
       open={open} 
-      onClose={userType === 'new' ? undefined : onClose}
+      onClose={onClose}
       maxWidth="md" 
       fullWidth
       sx={{
@@ -594,15 +618,14 @@ const SmartOnboarding = ({ open, onClose, userType = 'new' }) => {
       }}
     >
       <DialogContent sx={{ position: 'relative', p: 0 }}>
-        {/* Close button for returning users */}
-        {userType !== 'new' && (
-          <IconButton
-            onClick={onClose}
-            sx={{ position: 'absolute', right: 16, top: 16, zIndex: 1 }}
-          >
-            <Close />
-          </IconButton>
-        )}
+        {/* Close button - always available */}
+        <IconButton
+          onClick={onClose}
+          sx={{ position: 'absolute', right: 16, top: 16, zIndex: 1 }}
+          title="Skip onboarding"
+        >
+          <Close />
+        </IconButton>
         
         <Box sx={{ p: 4 }}>
           <Stepper activeStep={activeStep} orientation="vertical">
@@ -621,7 +644,7 @@ const SmartOnboarding = ({ open, onClose, userType = 'new' }) => {
                   
                   {/* Navigation buttons */}
                   {index > 0 && index < ONBOARDING_STEPS.length - 1 && (
-                    <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Button
                         onClick={handleBack}
                         variant="outlined"
@@ -629,6 +652,17 @@ const SmartOnboarding = ({ open, onClose, userType = 'new' }) => {
                       >
                         Back
                       </Button>
+                      
+                      <Button
+                        variant="text"
+                        color="secondary"
+                        onClick={skipOnboarding}
+                        disabled={loading}
+                        sx={{ textTransform: 'none', fontSize: '0.9rem' }}
+                      >
+                        Skip setup
+                      </Button>
+                      
                       <Button
                         variant="contained"
                         onClick={handleNext}
