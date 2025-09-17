@@ -131,16 +131,16 @@ const checkNetworkConnectivity = async () => {
     } catch (raceError) {
       clearTimeout(timeoutId);
       // Don't log abort errors as warnings since they're expected
-      if (raceError.name === 'AbortError' || raceError.message.includes('timeout')) {
+      if (raceError.name === 'AbortError' || (raceError.message && raceError.message.includes('timeout'))) {
         console.log('ℹ️ Network connectivity check timed out (expected behavior)');
       } else {
-        console.warn('⚠️ Network connectivity check failed:', raceError.message);
+        console.warn('⚠️ Network connectivity check failed:', raceError.message || 'Unknown error');
       }
       return false;
     }
   } catch (error) {
     // Fallback - assume we have connectivity if the check itself fails
-    console.warn('⚠️ Network connectivity check error:', error.message, '- assuming connected');
+    console.warn('⚠️ Network connectivity check error:', error.message || error.toString(), '- assuming connected');
     return true; // Assume connected on check failure
   }
 };
