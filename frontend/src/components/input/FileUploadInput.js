@@ -93,30 +93,15 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
       userEmail: user?.email
     });
     
-    console.log('🔍 About to check session...');
-    
-    try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      console.log('🔑 Current session status:', {
-        hasSession: !!session,
-        hasAccessToken: !!session?.access_token,
-        tokenExpiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : null,
-        tokenIsValid: session?.expires_at ? new Date(session.expires_at * 1000) > new Date() : false,
-        sessionError: error?.message
-      });
-      
-      if (!session?.access_token) {
-        toast.error('Authentication required. Please sign in again.');
-        console.error('🚫 No valid session found - aborting upload');
-        return;
-      }
-      
-      console.log('✅ Session validation passed - proceeding with upload');
-    } catch (authError) {
-      console.error('🔥 Failed to check authentication:', authError);
-      toast.error('Authentication check failed. Please try signing in again.');
+    // Skip redundant session check since we already have auth context
+    if (!isAuthenticated || !user) {
+      toast.error('Authentication required. Please sign in again.');
+      console.error('🚫 User not authenticated - aborting upload');
       return;
     }
+    
+    console.log('✅ Using existing auth context - proceeding with upload');
+    console.log('🔑 Auth details: { isAuthenticated:', isAuthenticated, ', hasUser:', !!user, ', userEmail:', user?.email, '}');
 
     console.log('🚀 Setting uploading state to true and starting file processing...');
     setUploading(true);
