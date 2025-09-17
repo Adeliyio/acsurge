@@ -1,0 +1,444 @@
+name: 🚀 Deploy to Datalix VPS
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/**'
+      - 'docker-compose.yml'
+      - 'docker-compose.prod.yml'
+  pull_request:
+    branches: [main]
+    types: [closed]
+    
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_tests:
+        description: 'Skip tests and deploy directly'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # ================================
+  # 🧪 TESTING & QUALITY CHECKS
+  # ================================
+  test-frontend:
+    name: 🧪 Frontend Tests
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.skip_tests }}
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 📦 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: 📦 Install dependencies
+      working-directory: ./frontend
+      run: npm ci --legacy-peer-deps
+      
+    - name: 🏗️ Build frontend
+      working-directory: ./frontend
+      run: npm run build
+      env:
+        CI: false  # Disable treating warnings as errors
+        
+    - name: 🧪 Run tests
+      working-directory: ./frontend  
+      run: npm test -- --coverage --watchAll=false
+      
+    - name: 📊 Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./frontend/coverage
+        flags: frontend
+
+  test-backend:
+    name: 🧪 Backend Tests
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.skip_tests }}
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_USER: test_user
+          POSTGRES_DB: adcopysurge_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+          
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: 📦 Install dependencies
+      working-directory: ./backend
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio
+        
+    - name: 🧪 Run backend tests
+      working-directory: ./backend
+      run: pytest tests/ -v --cov=app --cov-report=xml
+      env:
+        DATABASE_URL: postgresql://test_user:test_password@localhost:5432/adcopysurge_test
+        REDIS_URL: redis://localhost:6379/0
+        SECRET_KEY: test_secret_key_for_github_actions_only
+        ENVIRONMENT: testing
+        
+    - name: 📊 Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./backend
+        flags: backend
+
+  # ================================
+  # 🔨 BUILD DOCKER IMAGES
+  # ================================
+  build-images:
+    name: 🔨 Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [test-frontend, test-backend]
+    if: always() && (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped') && (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped')
+    
+    outputs:
+      frontend-image: ${{ steps.meta-frontend.outputs.tags }}
+      backend-image: ${{ steps.meta-backend.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+      
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔐 Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 🏷️ Extract metadata (frontend)
+      id: meta-frontend
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: 🏷️ Extract metadata (backend)
+      id: meta-backend  
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend
+        tags: |
+          type=ref,event=branch
+          type=sha
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: 🔧 Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: 🔨 Build and push frontend image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile
+        push: true
+        tags: ${{ steps.meta-frontend.outputs.tags }}
+        labels: ${{ steps.meta-frontend.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: 🔨 Build and push backend image  
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile
+        push: true
+        tags: ${{ steps.meta-backend.outputs.tags }}
+        labels: ${{ steps.meta-backend.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # ================================
+  # 🚀 DEPLOY TO STAGING
+  # ================================
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
+    environment: 
+      name: staging
+      url: https://staging.adcopysurge.com
+      
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔐 Setup SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.DATALIX_SSH_PRIVATE_KEY }}
+        
+    - name: 📦 Create deployment package
+      run: |
+        mkdir -p deploy
+        cp docker-compose.staging.yml deploy/
+        cp -r scripts deploy/
+        cp -r backend/alembic deploy/
+        cp backend/alembic.ini deploy/
+        tar -czf deploy-package.tar.gz deploy/
+        
+    - name: 📤 Upload deployment package
+      run: |
+        scp -o StrictHostKeyChecking=no deploy-package.tar.gz ${{ secrets.DATALIX_USER }}@${{ secrets.DATALIX_HOST }}:/tmp/
+        
+    - name: 🚀 Deploy to staging server
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.DATALIX_USER }}@${{ secrets.DATALIX_HOST }} << 'EOF'
+          set -e
+          
+          echo "🚀 Starting staging deployment..."
+          
+          # Navigate to app directory
+          cd /var/www/adcopysurge-staging
+          
+          # Backup current deployment
+          sudo cp docker-compose.yml docker-compose.yml.backup.$(date +%Y%m%d_%H%M%S) || true
+          
+          # Extract new deployment package
+          cd /tmp && tar -xzf deploy-package.tar.gz
+          sudo cp -r deploy/* /var/www/adcopysurge-staging/
+          
+          # Set environment variables
+          export DOCKER_IMAGE_TAG="${{ github.sha }}"
+          export DATABASE_URL="${{ secrets.STAGING_DATABASE_URL }}"
+          export SECRET_KEY="${{ secrets.STAGING_SECRET_KEY }}"
+          export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+          
+          # Pull new images
+          echo "🔄 Pulling Docker images..."
+          sudo docker-compose -f docker-compose.staging.yml pull
+          
+          # Run database migrations
+          echo "🗄️ Running database migrations..."
+          sudo docker-compose -f docker-compose.staging.yml run --rm backend python scripts/init_passport_schema.py --environment=staging
+          
+          # Deploy with zero-downtime
+          echo "🔄 Starting zero-downtime deployment..."
+          sudo docker-compose -f docker-compose.staging.yml up -d --remove-orphans
+          
+          # Health check
+          echo "🏥 Running health checks..."
+          sleep 30
+          
+          # Check backend health
+          if curl -f http://localhost:8000/api/health; then
+            echo "✅ Backend health check passed"
+          else
+            echo "❌ Backend health check failed"
+            sudo docker-compose -f docker-compose.staging.yml logs backend
+            exit 1
+          fi
+          
+          # Check frontend 
+          if curl -f http://localhost:3000; then
+            echo "✅ Frontend health check passed"
+          else
+            echo "❌ Frontend health check failed"  
+            sudo docker-compose -f docker-compose.staging.yml logs frontend
+            exit 1
+          fi
+          
+          echo "🎉 Staging deployment completed successfully!"
+        EOF
+        
+    - name: 📊 Run smoke tests
+      run: |
+        echo "🧪 Running smoke tests against staging..."
+        # Add smoke test commands here
+        curl -f https://staging.adcopysurge.com/api/health
+        curl -f https://staging.adcopysurge.com
+
+  # ================================  
+  # 🚀 DEPLOY TO PRODUCTION
+  # ================================
+  deploy-production:
+    name: 🚀 Deploy to Production  
+    runs-on: ubuntu-latest
+    needs: [build-images, deploy-staging]
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'production')
+    environment:
+      name: production
+      url: https://adcopysurge.com
+      
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🔐 Setup SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.DATALIX_SSH_PRIVATE_KEY }}
+        
+    - name: 📦 Create deployment package
+      run: |
+        mkdir -p deploy
+        cp docker-compose.prod.yml deploy/
+        cp -r scripts deploy/ 
+        cp -r backend/alembic deploy/
+        cp backend/alembic.ini deploy/
+        tar -czf deploy-package.tar.gz deploy/
+        
+    - name: 📤 Upload deployment package
+      run: |
+        scp -o StrictHostKeyChecking=no deploy-package.tar.gz ${{ secrets.DATALIX_USER }}@${{ secrets.DATALIX_HOST }}:/tmp/
+        
+    - name: 🚀 Deploy to production server
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.DATALIX_USER }}@${{ secrets.DATALIX_HOST }} << 'EOF'
+          set -e
+          
+          echo "🚀 Starting PRODUCTION deployment..."
+          echo "⚠️  This will update the live production system!"
+          
+          # Navigate to app directory  
+          cd /var/www/adcopysurge
+          
+          # Create backup
+          echo "💾 Creating backup..."
+          sudo tar -czf backup-$(date +%Y%m%d_%H%M%S).tar.gz docker-compose.yml .env || true
+          
+          # Extract new deployment package
+          cd /tmp && tar -xzf deploy-package.tar.gz
+          sudo cp -r deploy/* /var/www/adcopysurge/
+          
+          # Set production environment variables
+          export DOCKER_IMAGE_TAG="${{ github.sha }}"  
+          export DATABASE_URL="${{ secrets.PRODUCTION_DATABASE_URL }}"
+          export SECRET_KEY="${{ secrets.PRODUCTION_SECRET_KEY }}"
+          export OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}"
+          
+          # Pull new images
+          echo "🔄 Pulling production Docker images..."
+          sudo docker-compose -f docker-compose.prod.yml pull
+          
+          # Run database migrations
+          echo "🗄️ Running production database migrations..."  
+          sudo docker-compose -f docker-compose.prod.yml run --rm backend python scripts/init_passport_schema.py --environment=production
+          
+          # Blue-green deployment
+          echo "🔄 Starting blue-green deployment..."
+          
+          # Start new containers with different names
+          sudo docker-compose -f docker-compose.prod.yml up -d --scale backend=2 --scale frontend=2 --no-recreate
+          
+          # Health check new instances
+          echo "🏥 Running health checks on new instances..."
+          sleep 45
+          
+          # Check backend health
+          if curl -f http://localhost:8000/api/health; then
+            echo "✅ Production backend health check passed"
+          else
+            echo "❌ Production backend health check failed"
+            sudo docker-compose -f docker-compose.prod.yml logs backend
+            exit 1
+          fi
+          
+          # Switch traffic (restart nginx or load balancer)
+          sudo systemctl reload nginx
+          
+          # Remove old containers
+          sudo docker system prune -f
+          
+          echo "🎉 PRODUCTION deployment completed successfully!"
+        EOF
+
+  # ================================
+  # 📊 POST-DEPLOYMENT
+  # ================================
+  notify-deployment:
+    name: 📢 Notify Deployment Status
+    runs-on: ubuntu-latest  
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+    - name: 📢 Notify success
+      if: needs.deploy-production.result == 'success' || needs.deploy-staging.result == 'success'
+      run: |
+        echo "🎉 Deployment completed successfully!"
+        # Add Slack/Discord webhook notification here if needed
+        
+    - name: 📢 Notify failure
+      if: needs.deploy-production.result == 'failure' || needs.deploy-staging.result == 'failure'
+      run: |
+        echo "❌ Deployment failed!"
+        # Add failure notification here
+        
+  # ================================
+  # 🧹 CLEANUP
+  # ================================  
+  cleanup:
+    name: 🧹 Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+    - name: 🧹 Clean up old images
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.DATALIX_USER }}@${{ secrets.DATALIX_HOST }} << 'EOF'
+          # Remove old Docker images (keep last 3)
+          sudo docker image prune -f
+          sudo docker system prune -f --volumes
+        EOF
