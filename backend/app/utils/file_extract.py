@@ -191,3 +191,22 @@ def get_supported_extensions() -> List[str]:
 def is_supported_file(filename: str) -> bool:
     """Check if file extension is supported."""
     return any(filename.lower().endswith(ext) for ext in get_supported_extensions())
+
+class FileExtractor:
+    """File extractor class for API integration."""
+    
+    def extract_from_file(self, file_content: bytes, filename: str, platform: str = 'facebook') -> List[Dict[str, Any]]:
+        """Extract and parse ad copy from file content."""
+        try:
+            # Extract text from file
+            extracted_text = extract_text_from_file(filename, file_content)
+            
+            # Parse the extracted text using TextParser
+            from .text_parser import TextParser
+            parser = TextParser()
+            ads = parser.parse_text(extracted_text, platform)
+            
+            return ads
+        except Exception as e:
+            logger.error(f"Error extracting ads from file {filename}: {str(e)}")
+            return []
