@@ -231,15 +231,15 @@ jobs:
       uses: appleboy/ssh-action@v0.1.7
       with:
         host: 46.247.108.207
-        port: 46
+        port: 22
         username: root
         key: ${{ secrets.DATALIX_SSH_PRIVATE_KEY }}
         script: |
           set -e
           echo "🚀 Starting production deployment to Datalix VPS..."
           
-          # Navigate to application directory (adjust path as needed)
-          cd /opt/adcopysurge || cd /var/www/adcopysurge || cd /home/adcopysurge
+          # Navigate to application directory
+          cd /srv/adcopysurge/app
           
           # Create backup
           echo "💾 Creating backup..."
@@ -272,13 +272,9 @@ jobs:
           echo "🔄 Restarting services..."
           cd ..
           
-          # Try common service restart methods
-          systemctl restart adcopysurge || true
-          systemctl restart nginx || true
-          
-          # Alternative restart methods if systemctl doesn't work
-          pm2 restart all || true
-          supervisorctl restart all || true
+          # Restart backend service
+          systemctl restart adcopysurge-api.service
+          systemctl reload nginx
           
           # Health check
           echo "🏥 Running health checks..."
@@ -328,7 +324,7 @@ jobs:
         key: ${{ secrets.DATALIX_SSH_PRIVATE_KEY }}
         script: |
           echo "🧹 Cleaning up old backup files..."
-          cd /opt/adcopysurge || cd /var/www/adcopysurge || cd /home/adcopysurge
+          cd /srv/adcopysurge
           # Keep only the last 5 backups
-          ls -t backup-*.tar.gz | tail -n +6 | xargs rm -f || true
+          ls -t app-backup-* | tail -n +6 | xargs rm -rf || true
           echo "🧹 Cleanup completed"
