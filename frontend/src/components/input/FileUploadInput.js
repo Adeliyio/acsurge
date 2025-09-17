@@ -156,7 +156,7 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
                   : f
               ));
             },
-            timeout: 30000 // 30 second timeout
+            timeout: 10000 // 10 second timeout - reduced for debugging
           });
           
           console.log('✅ File upload completed for:', fileItem.file.name, result);
@@ -178,15 +178,21 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
         } catch (error) {
           console.error(`❌ Error processing file ${fileItem.file.name}:`, error);
           
+          // Clear progress interval
+          clearInterval(progressInterval);
+          
           // Log more detailed error information
-          if (error.response) {
-            console.error('📊 API Error Response:', {
+          console.error('🔍 Full error details:', {
+            name: error.name,
+            message: error.message,
+            code: error.code,
+            response: error.response ? {
               status: error.response.status,
               statusText: error.response.statusText,
-              data: error.response.data,
-              headers: error.response.headers
-            });
-          }
+              data: error.response.data
+            } : null,
+            stack: error.stack?.substring(0, 500) // First 500 chars of stack
+          });
           
           // More detailed error messages based on error type
           let errorMessage = error.message;
@@ -197,8 +203,12 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
             errorMessage = 'Access denied. Check your subscription or permissions.';
           } else if (error.response?.status === 413) {
             errorMessage = 'File too large. Please try with a smaller file.';
-          } else if (error.code === 'ECONNABORTED') {
-            errorMessage = 'Upload timed out. Please check your connection and try again.';
+          } else if (error.response?.status === 500) {
+            errorMessage = 'Server error during file processing. The backend may be missing required dependencies.';
+            console.error('🔥 Server error - likely backend issue');
+          } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+            errorMessage = 'Upload timed out after 10 seconds. The backend may be having issues processing .docx files.';
+            console.error('⏰ Timeout error - backend likely hanging on file processing');
           } else if (error.message.includes('Network Error')) {
             errorMessage = 'Network error. Please check your internet connection.';
           }
