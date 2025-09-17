@@ -416,7 +416,7 @@ class ApiService {
   }
   
   // Parse uploaded files
-  async parseFile(formData) {
+  async parseFile(formData, options = {}) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
@@ -424,13 +424,23 @@ class ApiService {
       // Add user_id to formData
       formData.append('user_id', user.id);
       
-      return this.client.post('/ads/parse-file', formData, {
+      const config = {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-      });
+        timeout: options.timeout || 60000, // Default 60 second timeout
+        ...options // Spread other options like onUploadProgress
+      };
+      
+      return this.client.post('/ads/parse-file', formData, config);
     } catch (error) {
       console.error('Error in parseFile:', error);
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('File upload timed out. Please try with a smaller file.');
+      }
+      if (error.response?.status === 413) {
+        throw new Error('File is too large. Please try with a smaller file.');
+      }
       throw error;
     }
   }

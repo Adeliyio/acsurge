@@ -106,10 +106,22 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
             ));
           }, 200);
 
-          const result = await apiService.parseFile(formData);
-
+          const result = await apiService.parseFile(formData, {
+            onUploadProgress: (progressEvent) => {
+              const percentCompleted = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              );
+              setFiles(prev => prev.map(f => 
+                f.id === fileItem.id 
+                  ? { ...f, progress: percentCompleted } 
+                  : f
+              ));
+            },
+            timeout: 30000 // 30 second timeout
+          });
+          
           clearInterval(progressInterval);
-
+          
           if (result.ads && result.ads.length > 0) {
             // Update file status to success
             setFiles(prev => prev.map(f => 

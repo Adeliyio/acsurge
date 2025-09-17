@@ -333,3 +333,11 @@ def parse_ad_copy_from_text(text: str, platform: str = 'facebook') -> Dict[str, 
             'error': str(e),
             'warning': 'Failed to parse ad copy'
         }
+
+class TextParser:
+    """Text parser class for API integration."""
+    
+    def parse_text(self, text: str, platform: str = 'facebook') -> List[Dict[str, Any]]:
+        """Parse text and return list of ads."""
+        result = parse_ad_copy_from_text(text, platform)
+        return result.get('ads', [])

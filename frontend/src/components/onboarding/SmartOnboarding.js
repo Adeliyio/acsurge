@@ -214,12 +214,24 @@ const SmartOnboarding = ({ open, onClose, userType = 'new' }) => {
       localStorage.setItem('adcopysurge_onboarding_completed', 'true');
       
       toast.success('Welcome to AdCopySurge! 🎉');
+      
+      // Close the onboarding modal first
       onClose();
+      
+      // Add a small delay to ensure the modal closes before navigation
+      setTimeout(() => {
+        // Use window.location for a hard redirect to ensure dashboard loads properly
+        window.location.href = '/dashboard';
+      }, 500);
       
     } catch (error) {
       console.error('Onboarding completion error:', error);
       toast.error('There was an issue saving your preferences, but you can continue using the app.');
       onClose();
+      // Still redirect to dashboard even if profile save fails
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 500);
     } finally {
       setLoading(false);
     }
