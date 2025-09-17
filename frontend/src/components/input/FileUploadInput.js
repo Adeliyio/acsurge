@@ -128,13 +128,14 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
           return updated;
         });
 
+        let progressInterval; // Declare at function scope
         try {
           const formData = new FormData();
           formData.append('file', fileItem.file);
           formData.append('platform', platform);
 
           // Simulate progress for better UX
-          const progressInterval = setInterval(() => {
+          progressInterval = setInterval(() => {
             setFiles(prev => prev.map(f => 
               f.id === fileItem.id && f.progress < 90 
                 ? { ...f, progress: f.progress + 10 } 
@@ -143,6 +144,7 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
           }, 200);
 
           console.log('📤 Starting file upload for:', fileItem.file.name);
+          console.log('🎯 API Base URL:', apiService.client?.defaults?.baseURL || 'undefined');
           
           const result = await apiService.parseFile(formData, {
             onUploadProgress: (progressEvent) => {
