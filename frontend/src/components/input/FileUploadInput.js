@@ -78,6 +78,9 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
   };
 
   const processFiles = async () => {
+    console.log('🔴 PROCESS FILES BUTTON CLICKED!');
+    console.log('📁 Files in state:', files.length, files.map(f => f.file.name));
+    
     if (files.length === 0) {
       toast.error('Please select files to upload');
       return;
