@@ -147,9 +147,30 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
       }
 
       if (allResults.length > 0) {
-        setParseResults({ ads: allResults });
-        onAdCopiesParsed(allResults);
-        toast.success(`🎉 Extracted ${allResults.length} ad${allResults.length > 1 ? 's' : ''} from files!`);
+        // Create data passports for each extracted ad copy
+        const adsWithPassports = allResults.map((ad, index) => ({
+          ...ad,
+          id: Date.now().toString() + '_' + index,
+          // Add orchestration metadata
+          meta: {
+            source: 'file_upload',
+            uploadedAt: new Date().toISOString(),
+            originalFile: files.find(f => f.result?.ads?.includes(ad))?.file?.name,
+            needsOrchestration: true
+          }
+        }));
+        
+        setParseResults({ ads: adsWithPassports });
+        onAdCopiesParsed(adsWithPassports);
+        toast.success(`🎉 Extracted ${adsWithPassports.length} ad${adsWithPassports.length > 1 ? 's' : ''} from files!`);
+        
+        // Show orchestration hint
+        setTimeout(() => {
+          toast('💡 Tip: Use the Analysis Tools Selector to choose which tools to run on your extracted ads', {
+            duration: 4000,
+            icon: '🔧'
+          });
+        }, 2000);
       } else {
         toast.error('No ad copy could be extracted from the uploaded files');
       }
