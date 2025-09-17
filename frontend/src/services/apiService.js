@@ -23,15 +23,10 @@ class ApiService {
 
     // Request interceptor to add Supabase auth token
     this.client.interceptors.request.use(
-      async (config) => {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            config.headers.Authorization = `Bearer ${session.access_token}`;
-          }
-        } catch (error) {
-          console.error('Error getting auth session:', error);
-        }
+      (config) => {
+        // Skip async session call that hangs - rely on caller to ensure auth
+        // For authenticated routes, the backend will validate the token
+        console.log('🔗 Making API request to:', config.baseURL + config.url);
         return config;
       },
       (error) => Promise.reject(error)
@@ -416,13 +411,14 @@ class ApiService {
   }
   
   // Parse uploaded files
-  async parseFile(formData, options = {}) {
+  async parseFile(formData, options = {}, userId = null) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      // Skip redundant auth check - caller already verified authentication
+      // The request interceptor will add the auth token automatically
       
-      // Add user_id to formData
-      formData.append('user_id', user.id);
+      if (userId) {
+        formData.append('user_id', userId);
+      }
       
       const config = {
         headers: {

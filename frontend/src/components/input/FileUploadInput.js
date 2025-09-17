@@ -159,7 +159,7 @@ const FileUploadInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'faceboo
               ));
             },
             timeout: 10000 // 10 second timeout - reduced for debugging
-          });
+          }, user?.id);
           
           console.log('✅ File upload completed for:', fileItem.file.name, result);
           
