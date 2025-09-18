@@ -60,40 +60,20 @@ const SIDEBAR_COLLAPSED_WIDTH = 72;
 const navigationSections = [
   {
     id: 'main',
-    label: 'Main Navigation',
+    label: 'Navigation',
     items: [
       {
         id: 'dashboard',
-        label: 'Dashboard',
+        label: 'Home',
         path: '/dashboard',
         icon: DashboardIcon,
         badge: null
       },
       {
         id: 'projects',
-        label: 'All Projects',
+        label: 'My Projects',
         path: '/projects',
         icon: ProjectsIcon,
-        badge: null
-      },
-      {
-        id: 'new-project',
-        label: 'Create Project',
-        path: '/project/new/workspace',
-        icon: StartIcon,
-        badge: null
-      }
-    ]
-  },
-  {
-    id: 'legacy',
-    label: 'Legacy Tools',
-    items: [
-      {
-        id: 'analyze',
-        label: 'Quick Analysis',
-        path: '/analyze',
-        icon: AnalyticsIcon,
         badge: null
       },
       {
@@ -101,83 +81,6 @@ const navigationSections = [
         label: 'Analysis History',
         path: '/history',
         icon: HistoryIcon,
-        badge: null
-      }
-    ]
-  },
-  {
-    id: 'ai-tools',
-    label: 'Power Tools',
-    collapsible: true,
-    collapsed: true,
-    items: [
-      {
-        id: 'compliance-checker',
-        label: 'Compliance Checker',
-        path: '/compliance-checker',
-        icon: ComplianceIcon,
-        badge: null
-      },
-      {
-        id: 'roi-generator',
-        label: 'ROI Copy Generator',
-        path: '/roi-generator',
-        icon: ROIIcon,
-        badge: null
-      },
-      {
-        id: 'ab-test-generator',
-        label: 'A/B Test Generator',
-        path: '/ab-test-generator',
-        icon: ABTestIcon,
-        badge: null
-      },
-      {
-        id: 'industry-optimizer',
-        label: 'Industry Optimizer',
-        path: '/industry-optimizer',
-        icon: IndustryIcon,
-        badge: null
-      },
-      {
-        id: 'performance-forensics',
-        label: 'Performance Forensics',
-        path: '/performance-forensics',
-        icon: ForensicsIcon,
-        badge: null
-      },
-      {
-        id: 'psychology-scorer',
-        label: 'Psychology Scorer',
-        path: '/psychology-scorer',
-        icon: PsychologyIcon,
-        badge: null
-      },
-      {
-        id: 'brand-voice-engine',
-        label: 'Brand Voice Engine',
-        path: '/brand-voice-engine',
-        icon: BrandVoiceIcon,
-        badge: null
-      },
-      {
-        id: 'legal-risk-scanner',
-        label: 'Legal Risk Scanner',
-        path: '/legal-risk-scanner',
-        icon: LegalIcon,
-        badge: null
-      }
-    ]
-  },
-  {
-    id: 'insights',
-    label: 'Insights & Reports',
-    items: [
-      {
-        id: 'reports',
-        label: 'Reports',
-        path: '/reports',
-        icon: ReportsIcon,
         badge: null
       }
     ]

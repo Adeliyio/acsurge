@@ -11,6 +11,7 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Footer from './components/Footer';
 import Dashboard from './pages/Dashboard';
+import SinglePageDashboard from './pages/SinglePageDashboard';
 import AdAnalysis from './pages/AdAnalysis';
 import AnalysisResults from './pages/AnalysisResults';
 import AnalysisHistory from './pages/AnalysisHistory';
@@ -449,15 +450,11 @@ function App() {
                 
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <SinglePageDashboard />
                   </ProtectedRoute>
                 } />
                 
-                <Route path="/analyze" element={
-                  <ProtectedRoute>
-                    <AdAnalysis />
-                  </ProtectedRoute>
-                } />
+                <Route path="/analyze" element={<Navigate to="/dashboard" replace />} />
                 
                 <Route path="/results/:analysisId" element={
                   <ProtectedRoute>
