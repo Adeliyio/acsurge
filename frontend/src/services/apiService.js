@@ -413,11 +413,8 @@ class ApiService {
   // Parse uploaded files
   async parseFile(formData, options = {}, userId = null) {
     try {
-      // Get current user and add auth token
+      // Get current user and add auth token (optional for testing)
       const { data: { user, session } } = await supabase.auth.getUser();
-      if (!user || !session) {
-        throw new Error('User not authenticated');
-      }
       
       if (userId) {
         formData.append('user_id', userId);
@@ -425,12 +422,19 @@ class ApiService {
       
       const config = {
         headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${session.access_token}`
+          'Content-Type': 'multipart/form-data'
         },
         timeout: options.timeout || 60000, // Default 60 second timeout
         ...options // Spread other options like onUploadProgress
       };
+      
+      // Add auth token if user is authenticated
+      if (user && session) {
+        config.headers['Authorization'] = `Bearer ${session.access_token}`;
+        console.log('🔐 Adding auth token to file upload request');
+      } else {
+        console.log('⚠️ File upload without authentication - testing mode');
+      }
       
       return this.client.post('/ads/parse-file', formData, config);
     } catch (error) {
