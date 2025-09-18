@@ -5,7 +5,7 @@
 
 import apiService from './apiService';
 
-const SHARED_WORKFLOW_BASE = '/api/v1/projects';
+const SHARED_WORKFLOW_BASE = '/ads'; // Use existing ads endpoints
 
 class SharedWorkflowService {
   /**
@@ -99,7 +99,7 @@ class SharedWorkflowService {
   }
 
   // Start ad-hoc analysis (Quick Analysis workflow)
-  // Creates a transient project and immediately runs analysis
+  // Temporarily use existing ads/analyze endpoint until projects are ready
   async startAdhocAnalysis(adCopyData, enabledTools = null) {
     const {
       headline,
@@ -111,37 +111,29 @@ class SharedWorkflowService {
       competitor_ads = []
     } = adCopyData;
 
-    // Create transient project for quick analysis
-    const projectData = {
-      projectName: `Quick Analysis - ${new Date().toLocaleString()}`,
-      description: 'Ad-hoc analysis from Quick Analysis workflow',
-      headline,
-      bodyText: body_text,
-      cta,
-      platform,
-      industry: industry || null,
-      targetAudience: target_audience || null,
-      enabledTools: enabledTools || ['compliance', 'legal', 'brand_voice', 'psychology'],
-      autoAnalyze: true,
-      tags: ['quick-analysis', 'ad-hoc']
-    };
-
     try {
-      // Create the project
-      const project = await this.createProject(projectData);
+      console.log('⚠️ Using legacy ads/analyze endpoint for quick analysis');
       
-      // Add competitor benchmarks if provided
-      if (competitor_ads && competitor_ads.length > 0) {
-        // Note: This would require a new endpoint to add competitor data to projects
-        // For now, we'll store it in project metadata or skip it
-        console.log('Competitor ads provided but not yet implemented in project workflow:', competitor_ads.length);
-      }
+      // Use existing analyzeAd method from apiService
+      const analysisResult = await apiService.analyzeAd({
+        ad: {
+          headline,
+          body_text,
+          cta,
+          platform,
+          industry,
+          target_audience
+        },
+        competitor_ads: competitor_ads || []
+      });
 
       return {
-        project_id: project.project_id,
-        analysis_id: project.project_id, // For backward compatibility
+        project_id: analysisResult.analysis_id,
+        analysis_id: analysisResult.analysis_id,
         is_adhoc: true,
-        enabled_tools: enabledTools || ['compliance', 'legal', 'brand_voice', 'psychology']
+        enabled_tools: enabledTools || ['compliance'],
+        scores: analysisResult.scores,
+        feedback: analysisResult.feedback
       };
     } catch (error) {
       console.error('Error in startAdhocAnalysis:', error);
