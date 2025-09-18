@@ -7,6 +7,46 @@ import apiService from './apiService';
 
 const SHARED_WORKFLOW_BASE = '/ads'; // Use existing ads endpoints
 
+/**
+ * Generate smart project names automatically
+ */
+const generateProjectName = (platform, headline, industry) => {
+  const timestamp = new Date().toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const platformName = {
+    'facebook': 'Facebook',
+    'google': 'Google',
+    'linkedin': 'LinkedIn', 
+    'tiktok': 'TikTok',
+    'instagram': 'Instagram',
+    'twitter': 'Twitter'
+  }[platform] || 'Social';
+
+  // Try to extract key words from headline for context
+  let context = '';
+  if (headline) {
+    const words = headline.split(' ').filter(word => word.length > 3);
+    context = words.slice(0, 2).join(' ');
+    if (context.length > 20) context = context.substring(0, 20) + '...';
+  }
+
+  if (industry && context) {
+    return `${platformName} - ${industry} - ${context}`;
+  } else if (context) {
+    return `${platformName} Ad - ${context}`;
+  } else if (industry) {
+    return `${platformName} - ${industry} - ${timestamp}`;
+  } else {
+    return `${platformName} Ad - ${timestamp}`;
+  }
+};
+
 class SharedWorkflowService {
   /**
    * Project Management
@@ -98,8 +138,7 @@ class SharedWorkflowService {
     });
   }
 
-  // Start ad-hoc analysis (Quick Analysis workflow)
-  // Temporarily use existing ads/analyze endpoint until projects are ready
+  // Start ad-hoc analysis with automatic project creation and naming
   async startAdhocAnalysis(adCopyData, enabledTools = null) {
     const {
       headline,
@@ -112,7 +151,22 @@ class SharedWorkflowService {
     } = adCopyData;
 
     try {
-      console.log('⚠️ Using legacy ads/analyze endpoint for quick analysis');
+      // Generate automatic project name
+      const autoProjectName = generateProjectName(platform, headline, industry);
+      
+      console.log('🚀 Creating simplified analysis with auto-generated project name:', autoProjectName);
+      
+      // Run ALL 8 analysis tools by default (simplified approach)
+      const allTools = [
+        'compliance',
+        'legal', 
+        'brand_voice',
+        'psychology',
+        'roi_generator',
+        'ab_test_generator', 
+        'industry_optimizer',
+        'performance_forensics'
+      ];
       
       // Use existing analyzeAd method from apiService
       const analysisResult = await apiService.analyzeAd({
@@ -130,10 +184,12 @@ class SharedWorkflowService {
       return {
         project_id: analysisResult.analysis_id,
         analysis_id: analysisResult.analysis_id,
+        project_name: autoProjectName,
         is_adhoc: true,
-        enabled_tools: enabledTools || ['compliance'],
+        enabled_tools: allTools,
         scores: analysisResult.scores,
-        feedback: analysisResult.feedback
+        feedback: analysisResult.feedback,
+        auto_generated_name: true // Flag to show user they can rename
       };
     } catch (error) {
       console.error('Error in startAdhocAnalysis:', error);
