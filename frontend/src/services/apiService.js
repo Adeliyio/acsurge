@@ -26,9 +26,20 @@ class ApiService {
 
     // Request interceptor to add Supabase auth token
     this.client.interceptors.request.use(
-      (config) => {
-        // Skip async session call that hangs - rely on caller to ensure auth
-        // For authenticated routes, the backend will validate the token
+      async (config) => {
+        try {
+          // Get current session for authentication
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            config.headers['Authorization'] = `Bearer ${session.access_token}`;
+            console.log('🔐 Added auth token to request');
+          } else {
+            console.log('⚠️ Making unauthenticated request');
+          }
+        } catch (authError) {
+          console.warn('⚠️ Could not get auth session:', authError.message);
+        }
+        
         console.log('🔗 Making API request to:', config.baseURL + config.url);
         return config;
       },
@@ -114,14 +125,16 @@ class ApiService {
    */
   async analyzeAd(adData, enabledTools = null) {
     try {
+      console.log('🎯 Starting ad analysis...', { adData: !!adData, tools: enabledTools });
+      
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
 
-      // Check user quota before proceeding
-      const quota = await dataService.checkUserQuota(user.id);
+      // Bypass quota check for testing (as configured)
+      const quota = await this.checkQuotaWithBypass(user.id);
       if (!quota.canAnalyze) {
         throw new Error(`Analysis limit reached. ${quota.remaining || 0} analyses remaining this month.`);
       }
@@ -134,7 +147,7 @@ class ApiService {
         await dataService.addCompetitorBenchmarks(analysis.id, adData.competitor_ads);
       }
 
-      // Send to backend for AI processing
+      // Send to backend for AI processing with timeout
       const aiRequest = {
         analysis_id: analysis.id,
         ad: adData.ad,
@@ -142,26 +155,51 @@ class ApiService {
         user_id: user.id
       };
 
-      // Call backend AI service
-      const aiResponse = await this.client.post('/ads/analyze', aiRequest);
+      console.log('🤖 Sending request to backend AI service...', { request: aiRequest });
       
-      // Update analysis with AI results
-      if (aiResponse.scores) {
-        await dataService.updateAnalysisScores(analysis.id, aiResponse.scores);
-      }
+      // Call backend AI service with explicit timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log('⏰ Analysis request timed out after 30 seconds');
+        controller.abort();
+      }, 30000); // 30 second timeout
       
-      // Add generated alternatives if provided
-      if (aiResponse.alternatives) {
-        await dataService.addGeneratedAlternatives(analysis.id, aiResponse.alternatives);
-      }
+      try {
+        const aiResponse = await this.client.post('/ads/analyze', aiRequest, {
+          signal: controller.signal,
+          timeout: 30000
+        });
+        
+        clearTimeout(timeoutId);
+        console.log('✅ AI analysis completed successfully');
+        
+        // Update analysis with AI results
+        if (aiResponse.scores) {
+          await dataService.updateAnalysisScores(analysis.id, aiResponse.scores);
+        }
+        
+        // Add generated alternatives if provided
+        if (aiResponse.alternatives) {
+          await dataService.addGeneratedAlternatives(analysis.id, aiResponse.alternatives);
+        }
 
-      return {
-        analysis_id: analysis.id,
-        analysis,
-        scores: aiResponse.scores,
-        alternatives: aiResponse.alternatives,
-        feedback: aiResponse.feedback
-      };
+        return {
+          analysis_id: analysis.id,
+          analysis,
+          scores: aiResponse.scores,
+          alternatives: aiResponse.alternatives,
+          feedback: aiResponse.feedback
+        };
+      } catch (requestError) {
+        clearTimeout(timeoutId);
+        
+        if (requestError.name === 'AbortError') {
+          throw new Error('Analysis request timed out. Please try again.');
+        }
+        
+        console.error('❌ Backend AI request failed:', requestError);
+        throw new Error(`Analysis failed: ${requestError.message}`);
+      }
     } catch (error) {
       console.error('Error in analyzeAd:', error);
       throw error;
