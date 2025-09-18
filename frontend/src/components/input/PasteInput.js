@@ -24,6 +24,51 @@ const PasteInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'facebook' })
   const [platform, setPlatform] = useState(defaultPlatform);
   const [parseResults, setParseResults] = useState(null);
 
+  // Simple client-side parsing as fallback
+  const parseClientSide = (text) => {
+    // Split by double newlines to separate different ads
+    const sections = text.split(/\n\s*\n/).filter(section => section.trim());
+    
+    const ads = sections.map((section, index) => {
+      const lines = section.split('\n').map(line => line.trim()).filter(line => line);
+      
+      // Simple heuristics to identify headline, body, and CTA
+      let headline = '', body_text = '', cta = '';
+      
+      if (lines.length >= 3) {
+        // If we have 3+ lines, assume first is headline, last is CTA, middle is body
+        headline = lines[0].replace(/^(headline:|title:)/i, '').trim();
+        cta = lines[lines.length - 1].replace(/^(cta:|call to action:|action:)/i, '').trim();
+        body_text = lines.slice(1, -1).join(' ').replace(/^(body:|description:|text:)/i, '').trim();
+      } else if (lines.length === 2) {
+        // 2 lines: headline and CTA or headline and body
+        headline = lines[0];
+        if (lines[1].length < 50) {
+          cta = lines[1]; // Likely a CTA if short
+        } else {
+          body_text = lines[1]; // Likely body text if long
+          cta = 'Learn More'; // Default CTA
+        }
+      } else if (lines.length === 1) {
+        // Single line - could be a headline
+        headline = lines[0];
+        body_text = 'Compelling description goes here';
+        cta = 'Get Started';
+      }
+      
+      return {
+        headline: headline || `Ad Copy ${index + 1}`,
+        body_text: body_text || 'Add your compelling ad description here',
+        cta: cta || 'Learn More',
+        platform: platform,
+        industry: '',
+        target_audience: ''
+      };
+    });
+    
+    return { ads, warning: ads.length > 0 ? null : 'Could not parse the text. Please check the format.' };
+  };
+
   const handleParse = async () => {
     if (!pastedText.trim()) {
       toast.error('Please paste some ad copy text to parse');
@@ -32,19 +77,33 @@ const PasteInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'facebook' })
 
     setParsing(true);
     try {
-      // Call the parsing API
-      const results = await apiService.parsePastedCopy(pastedText, platform);
+      // Try backend parsing first
+      try {
+        const results = await apiService.parsePastedCopy(pastedText, platform);
+        
+        if (results.ads && results.ads.length > 0) {
+          setParseResults(results);
+          onAdCopiesParsed(results.ads);
+          toast.success(`🎉 Parsed ${results.ads.length} ad${results.ads.length > 1 ? 's' : ''} successfully!`);
+          return;
+        }
+      } catch (backendError) {
+        console.warn('Backend parsing failed, using client-side fallback:', backendError);
+      }
+      
+      // Fallback to client-side parsing
+      const results = parseClientSide(pastedText);
       
       if (results.ads && results.ads.length > 0) {
         setParseResults(results);
         onAdCopiesParsed(results.ads);
-        toast.success(`🎉 Parsed ${results.ads.length} ad${results.ads.length > 1 ? 's' : ''} successfully!`);
+        toast.success(`🎉 Parsed ${results.ads.length} ad${results.ads.length > 1 ? 's' : ''} successfully! (Client-side parsing)`);
       } else {
         toast.error('No ad copy could be parsed from the provided text');
       }
     } catch (error) {
-      console.error('Parsing failed:', error);
-      toast.error(error.message || 'Failed to parse ad copy');
+      console.error('Parsing failed completely:', error);
+      toast.error('Failed to parse ad copy. Please check the format and try again.');
     } finally {
       setParsing(false);
     }
@@ -57,9 +116,9 @@ const PasteInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'facebook' })
   };
 
   const exampleTexts = [
-    "Headline: Get 50% Off Today\nBody: Limited time offer on all products. Free shipping included!\nCTA: Shop Now",
-    "Transform Your Business Today\nDiscover the tools that successful entrepreneurs use to scale their companies from startup to success. Join thousands of satisfied customers.\nStart Free Trial",
-    "🎯 Headline: Boost Your Sales\n📝 Description: Our AI-powered platform increases conversion rates by 40% on average\n🔗 Call to action: Get Started Free"
+    "🚀 Finally, A CRM That Actually Works\nTired of juggling spreadsheets, missed follow-ups, and losing track of leads? Our AI-powered CRM automatically captures every interaction, predicts your best opportunities, and closes deals 3x faster. Join 50,000+ sales professionals who've increased their revenue by 40% in just 3 months.\nStart Your Free 14-Day Trial",
+    "⚡ Stop Wasting $1,000s on Facebook Ads That Don't Convert\nMost businesses burn through their ad budget because they're targeting the wrong people with the wrong message. Our proprietary audience intelligence platform identifies your highest-value customers and creates laser-focused campaigns that deliver 5x ROI. Case study: Sarah's boutique went from $2k to $50k/month in 6 months.\nGet Your Free Strategy Session",
+    "🎯 Transform Your Body in 90 Days (Without Giving Up Your Favorite Foods)\nForget extreme diets and 2-hour gym sessions. Our science-backed nutrition system and 20-minute workouts have helped 25,000+ busy professionals lose 15-50 lbs while eating foods they love. Dr. Martinez lost 35 lbs and kept it off for 2 years.\nClaim Your Spot (Only 100 Left)"
   ];
 
   return (

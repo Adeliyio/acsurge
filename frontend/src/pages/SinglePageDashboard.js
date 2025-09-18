@@ -473,10 +473,17 @@ const SinglePageDashboard = () => {
                           <Paper variant="outlined" sx={{ p: 2 }}>
                             <Typography variant="subtitle2" gutterBottom>Platform *</Typography>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                              {['facebook', 'google', 'linkedin', 'tiktok'].map((platform) => (
+                              {['facebook', 'google', 'linkedin', 'tiktok', 'instagram', 'twitter'].map((platform) => (
                                 <Chip
                                   key={platform}
-                                  label={platform === 'facebook' ? 'Facebook' : platform === 'google' ? 'Google' : platform === 'linkedin' ? 'LinkedIn' : 'TikTok'}
+                                  label={
+                                    platform === 'facebook' ? 'Facebook' : 
+                                    platform === 'google' ? 'Google' : 
+                                    platform === 'linkedin' ? 'LinkedIn' : 
+                                    platform === 'tiktok' ? 'TikTok' :
+                                    platform === 'instagram' ? 'Instagram' :
+                                    'Twitter'
+                                  }
                                   onClick={() => field.onChange(platform)}
                                   color={field.value === platform ? 'primary' : 'default'}
                                   variant={field.value === platform ? 'filled' : 'outlined'}
