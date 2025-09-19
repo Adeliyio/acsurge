@@ -36,36 +36,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: {
       'x-client-info': 'adcopysurge-web'
-    },
-    fetch: (url, options = {}) => {
-      // Increase timeout for all requests to handle high latency
-      const timeoutMs = 60000; // 60 seconds for high latency networks
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      
-      // Debug logging for authentication issues
-      if (process.env.NODE_ENV === 'development' && url.includes('supabase.co')) {
-        console.log('🔍 Supabase Request:', {
-          url: url.replace(/https:\/\/[^.]+\.supabase\.co/, '[SUPABASE_URL]'),
-          hasApiKey: !!(options.headers?.apikey || options.headers?.['apikey']),
-          hasAuth: !!(options.headers?.authorization || options.headers?.['Authorization']),
-          method: options.method || 'GET'
-        });
-      }
-      
-      return fetch(url, {
-        ...options,
-        signal: controller.signal,
-        headers: {
-          // Preserve all original headers (including apikey and Authorization)
-          ...options.headers,
-          // Only add these if they don't already exist
-          ...(options.headers && !options.headers['Cache-Control'] && { 'Cache-Control': 'no-cache' }),
-          ...(options.headers && !options.headers['Connection'] && { 'Connection': 'keep-alive' })
-        }
-      }).finally(() => {
-        clearTimeout(timeoutId);
-      });
     }
   }
 });
