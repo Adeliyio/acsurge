@@ -36,6 +36,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: {
       'x-client-info': 'adcopysurge-web'
+    },
+    fetch: (url, options = {}) => {
+      // Debug logging for auth issues
+      if (url.includes('supabase.co')) {
+        console.log('🔍 Supabase Request Debug:', {
+          url: url.replace(/https:\/\/[^.]+\.supabase\.co/, '[SUPABASE_URL]'),
+          method: options.method || 'GET',
+          hasApiKey: !!(options.headers?.apikey || options.headers?.['apikey']),
+          hasAuth: !!(options.headers?.Authorization || options.headers?.['authorization']),
+          headers: Object.keys(options.headers || {})
+        });
+      }
+      
+      // Use native fetch with all original options
+      return fetch(url, options);
     }
   }
 });
