@@ -73,6 +73,64 @@ export const runAuthDiagnostics = async () => {
     console.log('- localStorage access: ❌ Failed -', error.message);
   }
   
+  // Test authenticated API requests
+  console.log('\n🔐 Authenticated API Tests:');
+  try {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.log('- API tests skipped: ❌ No active session');
+    } else {
+      console.log('- Session found, testing authenticated requests...');
+      
+      // Test user_profiles request (the one that's failing according to logs)
+      try {
+        const startTime = Date.now();
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .limit(1);
+        const endTime = Date.now();
+        
+        if (error) {
+          console.log(`- user_profiles query: ❌ Failed (${endTime - startTime}ms)`);
+          console.log(`  Error: ${error.message}`);
+          console.log(`  Code: ${error.code}`);
+          console.log(`  Hint: ${error.hint || 'N/A'}`);
+        } else {
+          console.log(`- user_profiles query: ✅ Success (${endTime - startTime}ms)`);
+        }
+      } catch (profileError) {
+        console.log('- user_profiles query: ❌ Exception -', profileError.message);
+      }
+      
+      // Test projects request (another failing one from logs)
+      try {
+        const startTime = Date.now();
+        const { data, error } = await supabase
+          .from('ad_copy_projects')
+          .select('id, project_name, status')
+          .eq('user_id', session.user.id)
+          .limit(1);
+        const endTime = Date.now();
+        
+        if (error) {
+          console.log(`- ad_copy_projects query: ❌ Failed (${endTime - startTime}ms)`);
+          console.log(`  Error: ${error.message}`);
+          console.log(`  Code: ${error.code}`);
+          console.log(`  Hint: ${error.hint || 'N/A'}`);
+        } else {
+          console.log(`- ad_copy_projects query: ✅ Success (${endTime - startTime}ms)`);
+        }
+      } catch (projectError) {
+        console.log('- ad_copy_projects query: ❌ Exception -', projectError.message);
+      }
+    }
+  } catch (error) {
+    console.log('- API tests: ❌ Failed -', error.message);
+  }
+  
   // Performance check
   console.log('\n⚡ Performance Tests:');
   const tests = [
@@ -108,11 +166,27 @@ export const runAuthDiagnostics = async () => {
     recommendations.push('- Check your .env file contains REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY');
   }
   
-  // We could add more dynamic recommendations based on the test results
+  // Check if we detected the specific "No API key found" issue
+  console.log('\n🕵️ Specific Issue Checks:');
+  console.log('If you\'re seeing "No API key found in request" errors:');
+  console.log('1. Verify your .env file has the correct REACT_APP_SUPABASE_ANON_KEY');
+  console.log('2. Restart your development server after changing .env');
+  console.log('3. Check browser DevTools Network tab - requests should have:');
+  console.log('   - "apikey" header with your anon key, OR');
+  console.log('   - "Authorization: Bearer <jwt>" header for authenticated users');
+  console.log('4. Clear browser cache and localStorage if issues persist');
+  console.log('\n🔧 Debug commands:');
+  console.log('- window.runAuthDiagnostics() - Run this full diagnostic');
+  console.log('- window.debugAuthState() - Quick auth state check (if available)');
   
   if (recommendations.length === 0) {
-    console.log('- No specific issues detected. If problems persist, check network connectivity and Supabase service status.');
+    console.log('\n✅ No specific configuration issues detected.');
+    console.log('If problems persist, check:');
+    console.log('- Network connectivity and Supabase service status');
+    console.log('- Browser console for additional error details');
+    console.log('- Supabase dashboard logs for server-side errors');
   } else {
+    console.log('\n⚠️ Configuration Issues Found:');
     recommendations.forEach(rec => console.log(rec));
   }
 };

@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard';
 import SinglePageDashboard from './pages/SinglePageDashboard';
 import AdAnalysis from './pages/AdAnalysis';
 import AnalysisResults from './pages/AnalysisResults';
+import SimplifiedResults from './pages/SimplifiedResults';
 import AnalysisHistory from './pages/AnalysisHistory';
 import Reports from './pages/Reports';
 import Login from './pages/Login';
@@ -56,6 +57,9 @@ import DemoRoutes from './components/demo/DemoRoute';
 
 // Services
 import { AuthProvider, useAuth } from './services/authContext';
+
+// Debug utilities (available in browser console)
+import './utils/supabaseDebug';
 
 // Blog
 import { BlogProvider } from './contexts/BlogContext';
@@ -459,6 +463,12 @@ function App() {
                 <Route path="/results/:analysisId" element={
                   <ProtectedRoute>
                     <AnalysisResults />
+                  </ProtectedRoute>
+                } />
+                
+                <Route path="/results/simple/:projectId" element={
+                  <ProtectedRoute>
+                    <SimplifiedResults />
                   </ProtectedRoute>
                 } />
                 
