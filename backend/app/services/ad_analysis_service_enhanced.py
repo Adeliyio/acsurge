@@ -8,6 +8,7 @@ while maintaining backward compatibility with existing interfaces.
 import asyncio
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 # Import the Tools SDK
 from packages.tools_sdk import ToolOrchestrator, ToolInput, ToolRegistry, default_registry
@@ -373,3 +374,87 @@ class EnhancedAdAnalysisService:
         )
         
         return orchestration_result.to_dict()
+    
+    # Legacy compatibility methods
+    def get_user_analysis_history(self, user_id: int, limit: int = 10, offset: int = 0) -> List[Dict]:
+        """Get user's analysis history - legacy compatibility method"""
+        analyses = self.db.query(AdAnalysis)\
+                          .filter(AdAnalysis.user_id == user_id)\
+                          .order_by(AdAnalysis.created_at.desc())\
+                          .offset(offset)\
+                          .limit(limit)\
+                          .all()
+        
+        return [
+            {
+                'id': analysis.id,
+                'headline': analysis.headline,
+                'platform': analysis.platform,
+                'overall_score': analysis.overall_score,
+                'created_at': analysis.created_at.isoformat()
+            }
+            for analysis in analyses
+        ]
+    
+    def get_analysis_by_id(self, analysis_id: str, user_id: int) -> Optional[Dict]:
+        """Get specific analysis by ID - legacy compatibility method"""
+        analysis = self.db.query(AdAnalysis)\
+                          .filter(AdAnalysis.id == analysis_id, AdAnalysis.user_id == user_id)\
+                          .first()
+        
+        if not analysis:
+            return None
+        
+        return {
+            'id': analysis.id,
+            'headline': analysis.headline,
+            'body_text': analysis.body_text,
+            'cta': analysis.cta,
+            'platform': analysis.platform,
+            'scores': {
+                'overall_score': analysis.overall_score,
+                'clarity_score': analysis.clarity_score,
+                'persuasion_score': analysis.persuasion_score,
+                'emotion_score': analysis.emotion_score,
+                'cta_strength': analysis.cta_strength_score,
+                'platform_fit_score': analysis.platform_fit_score
+            },
+            'analysis_data': analysis.analysis_data,
+            'created_at': analysis.created_at.isoformat()
+        }
+    
+    async def generate_ad_alternatives(self, ad: AdInput) -> List[AdAlternative]:
+        """Generate alternative variations for an ad - legacy compatibility method"""
+        # Use the SDK to generate alternatives
+        tool_input = ToolInput.from_legacy_ad_input(
+            ad_data={
+                'headline': ad.headline,
+                'body_text': ad.body_text,
+                'cta': ad.cta,
+                'platform': ad.platform
+            },
+            user_id="anonymous"  # For alternative generation, user_id can be anonymous
+        )
+        
+        # Try to use AI generator tools
+        try:
+            orchestration_result = await self.orchestrator.run_tools(
+                tool_input,
+                ["ai_copy_generator", "ab_test_generator"],  # Try these tools first
+                execution_mode="parallel"
+            )
+            
+            # Convert to legacy format
+            alternatives = []
+            for tool_name, tool_output in orchestration_result.tool_results.items():
+                if tool_output.success and hasattr(tool_output, 'generated_alternatives'):
+                    alternatives.extend(tool_output.generated_alternatives)
+            
+            if alternatives:
+                return alternatives
+        
+        except Exception as e:
+            logger.warning(f"Failed to generate alternatives with SDK: {e}")
+        
+        # Fallback to template-based alternatives
+        return await self._generate_fallback_alternatives(ad)

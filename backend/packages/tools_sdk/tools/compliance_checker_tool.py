@@ -750,7 +750,7 @@ class ComplianceCheckerToolRunner(ToolRunner):
         """Get default configuration for this tool"""
         return ToolConfig(
             name="compliance_checker",
-            tool_type=ToolType.CHECKER,
+            tool_type=ToolType.VALIDATOR,
             timeout=25.0,
             parameters={
                 'strict_mode': False,

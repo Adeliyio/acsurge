@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 from app.core.database import get_db
-from app.services.ad_analysis_service import AdAnalysisService
+from app.services.ad_analysis_service_enhanced import EnhancedAdAnalysisService
 from app.auth import get_current_user, require_subscription_limit
 from app.models.user import User
 from app.schemas.ads import (
@@ -31,7 +31,7 @@ async def analyze_ad(
     # User is already authenticated and subscription limits checked
     
     # Perform ad analysis
-    ad_service = AdAnalysisService(db)
+    ad_service = EnhancedAdAnalysisService(db)
     analysis = await ad_service.analyze_ad(
         user_id=current_user.id,
         ad=request.ad,
@@ -48,7 +48,7 @@ async def get_analysis_history(
     current_user: User = Depends(get_current_user)
 ):
     """Get user's analysis history"""
-    ad_service = AdAnalysisService(db)
+    ad_service = EnhancedAdAnalysisService(db)
     history = ad_service.get_user_analysis_history(current_user.id, limit, offset)
     
     return history
@@ -60,7 +60,7 @@ async def get_analysis_detail(
     current_user: User = Depends(get_current_user)
 ):
     """Get detailed analysis results"""
-    ad_service = AdAnalysisService(db)
+    ad_service = EnhancedAdAnalysisService(db)
     analysis = ad_service.get_analysis_by_id(analysis_id, current_user.id)
     
     if not analysis:
@@ -76,7 +76,7 @@ async def generate_alternatives(
 ):
     """Generate alternative ad variations"""
     
-    ad_service = AdAnalysisService(db)
+    ad_service = EnhancedAdAnalysisService(db)
     alternatives = await ad_service.generate_ad_alternatives(ad)
     
     return {"alternatives": alternatives}
@@ -171,7 +171,7 @@ async def generate_ad_copy(
 ):
     """Generate ad copy using AI"""
     try:
-        ad_service = AdAnalysisService(db)
+        ad_service = EnhancedAdAnalysisService(db)
         
         # Create a prompt for AI generation
         prompt = f"""
