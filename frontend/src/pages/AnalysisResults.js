@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Container,
   Typography,
@@ -8,8 +8,24 @@ import {
   LinearProgress,
   Card,
   CardContent,
-  Chip
+  Chip,
+  Button,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  IconButton,
+  Tooltip,
+  Alert
 } from '@mui/material';
+import {
+  ExpandMore,
+  ContentCopy,
+  SwapHoriz,
+  TrendingUp,
+  Psychology,
+  Science,
+  AccessTime
+} from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import apiService from '../services/apiService';
@@ -20,6 +36,11 @@ const AnalysisResults = () => {
   const { analysisId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // State for improvement functionality
+  const [improvements, setImprovements] = useState([]);
+  const [isImproving, setIsImproving] = useState(false);
+  const [improvementError, setImprovementError] = useState(null);
 
   // Fetch analysis data with our standardized hook
   const fetchAnalysisData = useCallback(async () => {
@@ -89,6 +110,56 @@ const AnalysisResults = () => {
   };
 
   const formatScore = (score) => Math.round(score);
+  
+  // Handle improve ad functionality
+  const handleImproveAd = async () => {
+    if (!analysis) return;
+    
+    setIsImproving(true);
+    setImprovementError(null);
+    
+    try {
+      const response = await apiService.post('/ads/improve', {
+        headline: analysis.headline,
+        body_text: analysis.body_text,
+        cta: analysis.cta,
+        platform: analysis.platform,
+        current_overall_score: analysis.overall_score,
+        analysis_id: analysisId
+      });
+      
+      if (response.success && response.improvements) {
+        setImprovements(response.improvements);
+      } else {
+        setImprovementError('Failed to generate improvements. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error improving ad:', error);
+      setImprovementError('Unable to generate improvements right now. Please try again later.');
+    } finally {
+      setIsImproving(false);
+    }
+  };
+  
+  // Copy text to clipboard
+  const copyToClipboard = async (text, type) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You could add a toast notification here
+    } catch (error) {
+      console.error('Failed to copy:', error);
+    }
+  };
+  
+  // Get strategy icon
+  const getStrategyIcon = (strategy) => {
+    switch (strategy) {
+      case 'emotional': return <Psychology color="secondary" />;
+      case 'logical': return <Science color="primary" />;
+      case 'urgency': return <AccessTime color="warning" />;
+      default: return <TrendingUp />;
+    }
+  };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -229,20 +300,226 @@ const AnalysisResults = () => {
             <Typography variant="h6" gutterBottom>
               AI Feedback
             </Typography>
-              <Typography variant="body1">
-                {analysis.analysis_data?.feedback || analysis.feedback || 'AI analysis completed successfully.'}
-              </Typography>
+            <Typography variant="body1" sx={{ mb: 3 }}>
+              {analysis.analysis_data?.feedback || analysis.feedback || 'AI analysis completed successfully.'}
+            </Typography>
+            
+            {/* Improve Ad Button */}
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={handleImproveAd}
+                disabled={isImproving}
+                startIcon={isImproving ? <LinearProgress /> : <TrendingUp />}
+                sx={{
+                  px: 4,
+                  py: 1.5,
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #1e40af 0%, #6d28d9 100%)',
+                  }
+                }}
+              >
+                {isImproving ? 'Generating Improvements...' : '🚀 Improve This Ad'}
+              </Button>
+            </Box>
+            
+            {/* Error Message */}
+            {improvementError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {improvementError}
+              </Alert>
+            )}
           </Paper>
         </Grid>
 
-        {/* Alternatives */}
-        <Grid item xs={12}>
-          <Typography variant="h6" gutterBottom>
-            AI-Generated Alternatives
-          </Typography>
-          <Grid container spacing={2}>
-            {analysis.ad_generations && analysis.ad_generations.length > 0 ? (
-              analysis.ad_generations.map((alternative, index) => (
+        {/* Improved Alternatives */}
+        {improvements.length > 0 && (
+          <Grid item xs={12}>
+            <Typography variant="h5" gutterBottom sx={{ 
+              fontWeight: 700, 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1,
+              mt: 2 
+            }}>
+              🎯 Strategic Ad Improvements
+            </Typography>
+            
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+              Here are 3 strategically enhanced versions of your ad, each optimized for different psychology approaches:
+            </Typography>
+            
+            {improvements.map((improvement, index) => (
+              <Accordion key={index} sx={{ mb: 2 }}>
+                <AccordionSummary 
+                  expandIcon={<ExpandMore />}
+                  sx={{
+                    bgcolor: 'background.paper',
+                    '&:hover': {
+                      bgcolor: 'grey.50'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                    {getStrategyIcon(improvement.variant_type)}
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography variant="h6" fontWeight={600}>
+                        {improvement.strategy_focus || `${improvement.variant_type} Strategy`}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Chip 
+                          label={`Score: ${improvement.predicted_score?.toFixed(1) || 'N/A'}%`}
+                          color="success"
+                          size="small"
+                        />
+                        <Chip 
+                          label={`+${improvement.score_improvement?.toFixed(1) || '0'}% improvement`}
+                          color="primary" 
+                          size="small"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </Box>
+                  </Box>
+                </AccordionSummary>
+                
+                <AccordionDetails>
+                  <Grid container spacing={3}>
+                    {/* Improved Ad Content */}
+                    <Grid item xs={12} md={8}>
+                      <Paper sx={{ p: 3, bgcolor: 'grey.50' }}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                            HEADLINE
+                          </Typography>
+                          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                            {improvement.headline}
+                          </Typography>
+                          <Tooltip title="Copy headline">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => copyToClipboard(improvement.headline, 'headline')}
+                            >
+                              <ContentCopy fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                        
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                            BODY TEXT
+                          </Typography>
+                          <Typography variant="body1" paragraph>
+                            {improvement.body_text}
+                          </Typography>
+                          <Tooltip title="Copy body text">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => copyToClipboard(improvement.body_text, 'body')}
+                            >
+                              <ContentCopy fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                        
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                            CALL TO ACTION
+                          </Typography>
+                          <Typography variant="h6" color="primary" gutterBottom sx={{ fontWeight: 600 }}>
+                            {improvement.cta}
+                          </Typography>
+                          <Tooltip title="Copy CTA">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => copyToClipboard(improvement.cta, 'cta')}
+                            >
+                              <ContentCopy fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                        
+                        {/* Action Buttons */}
+                        <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                          <Button 
+                            variant="outlined" 
+                            size="small"
+                            startIcon={<ContentCopy />}
+                            onClick={() => copyToClipboard(
+                              `${improvement.headline}\n\n${improvement.body_text}\n\n${improvement.cta}`, 
+                              'full ad'
+                            )}
+                          >
+                            Copy All
+                          </Button>
+                          <Button 
+                            variant="contained" 
+                            size="small"
+                            startIcon={<SwapHoriz />}
+                            color="secondary"
+                          >
+                            Use This Version
+                          </Button>
+                        </Box>
+                      </Paper>
+                    </Grid>
+                    
+                    {/* Improvement Analysis */}
+                    <Grid item xs={12} md={4}>
+                      <Box>
+                        <Typography variant="h6" gutterBottom fontWeight={600}>
+                          Why This Works
+                        </Typography>
+                        <Typography variant="body2" paragraph>
+                          {improvement.improvement_reason}
+                        </Typography>
+                        
+                        {/* Score Improvement Visual */}
+                        <Box sx={{ mt: 3 }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            Performance Prediction
+                          </Typography>
+                          <LinearProgress 
+                            variant="determinate" 
+                            value={improvement.predicted_score || 0}
+                            sx={{ 
+                              height: 8, 
+                              borderRadius: 4,
+                              bgcolor: 'grey.200'
+                            }}
+                            color="success"
+                          />
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            Predicted score: {improvement.predicted_score?.toFixed(1) || 'N/A'}%
+                          </Typography>
+                        </Box>
+                        
+                        <Alert severity="info" sx={{ mt: 2 }}>
+                          <Typography variant="body2">
+                            <strong>Strategy:</strong> {improvement.variant_type?.charAt(0).toUpperCase() + improvement.variant_type?.slice(1)}
+                          </Typography>
+                        </Alert>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+            ))}
+          </Grid>
+        )}
+        
+        {/* Original Alternatives (fallback) */}
+        {improvements.length === 0 && analysis.ad_generations && analysis.ad_generations.length > 0 && (
+          <Grid item xs={12}>
+            <Typography variant="h6" gutterBottom>
+              AI-Generated Alternatives
+            </Typography>
+            <Grid container spacing={2}>
+              {analysis.ad_generations.map((alternative, index) => (
                 <Grid item xs={12} md={6} key={index}>
                   <Card>
                     <CardContent>
@@ -268,21 +545,10 @@ const AnalysisResults = () => {
                     </CardContent>
                   </Card>
                 </Grid>
-              ))
-            ) : (
-              <Grid item xs={12}>
-                <EmptyState
-                  variant="templates"
-                  size="small"
-                  title="No alternatives generated"
-                  description="AI alternatives weren't generated for this analysis. You can run a new analysis to get fresh alternatives."
-                  actionText="Run Another Analysis"
-                  onAction={() => navigate('/analyze')}
-                />
-              </Grid>
-            )}
+              ))}
+            </Grid>
           </Grid>
-        </Grid>
+        )}
       </Grid>
     </Container>
   );

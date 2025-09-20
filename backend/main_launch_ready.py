@@ -215,9 +215,13 @@ async def analyze_ad(ad_input: AdInput):
         # Calculate remaining scores  
         emotion_score = calculate_emotion_score(f"{ad_input.headline} {ad_input.body_text}")
         platform_fit_score = calculate_platform_fit(ad_input)
-        overall_score = calculate_overall_score(clarity_score, persuasion_score, emotion_score, cta_strength, platform_fit_score)
         
-        # Build response
+        # Use enhanced scoring system
+        full_text = f"{ad_input.headline} {ad_input.body_text} {ad_input.cta}"
+        scoring_result = calculate_overall_score(clarity_score, persuasion_score, emotion_score, cta_strength, platform_fit_score, full_text)
+        overall_score = scoring_result["overall_score"]
+        
+        # Build response with enhanced scores
         scores = AdScore(
             clarity_score=clarity_score,
             persuasion_score=persuasion_score,
@@ -227,10 +231,29 @@ async def analyze_ad(ad_input: AdInput):
             overall_score=overall_score
         )
         
-        # Generate feedback and alternatives
-        feedback = generate_feedback_simple(scores)
+        # Generate enhanced feedback and alternatives
+        try:
+            from app.services.improved_feedback_engine import generate_actionable_feedback
+            
+            scores_dict = {
+                "clarity_score": clarity_score,
+                "persuasion_score": persuasion_score,
+                "emotion_score": emotion_score,
+                "cta_strength": cta_strength,
+                "platform_fit_score": platform_fit_score,
+                "overall_score": overall_score
+            }
+            
+            enhanced_feedback = generate_actionable_feedback(scores_dict, full_text, ad_input.platform)
+            feedback = enhanced_feedback["summary"]
+            quick_wins = enhanced_feedback["quick_wins"]
+            
+        except ImportError:
+            # Fallback to simple feedback
+            feedback = generate_feedback_simple(scores)
+            quick_wins = generate_quick_wins(scores, ad_input)
+        
         alternatives = generate_template_alternatives(ad_input)
-        quick_wins = generate_quick_wins(scores, ad_input)
         
         return AdAnalysisResponse(
             analysis_id=f"analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -289,25 +312,46 @@ def calculate_emotion_score(text: str) -> float:
     
     return min(100, emotion_count * 20 + 20)  # Base score of 20, up to 100
 
-def calculate_overall_score(clarity: float, persuasion: float, emotion: float, cta: float, platform_fit: float) -> float:
-    """Calculate weighted overall score"""
-    weights = {
-        'clarity': 0.2,
-        'persuasion': 0.25,
-        'emotion': 0.2,
-        'cta': 0.25,
-        'platform_fit': 0.1
-    }
-    
-    overall = (
-        clarity * weights['clarity'] +
-        persuasion * weights['persuasion'] +
-        emotion * weights['emotion'] +
-        cta * weights['cta'] +
-        platform_fit * weights['platform_fit']
-    )
-    
-    return round(overall, 1)
+def calculate_overall_score(clarity: float, persuasion: float, emotion: float, cta: float, platform_fit: float, full_text: str = "") -> Dict[str, Any]:
+    """Calculate enhanced weighted overall score with strict calibration"""
+    try:
+        # Import our enhanced scoring system
+        from app.utils.scoring_calibration import BaselineScoreCalibrator
+        
+        calibrator = BaselineScoreCalibrator()
+        result = calibrator.calculate_calibrated_score(
+            clarity, persuasion, emotion, cta, platform_fit, full_text
+        )
+        
+        return {
+            "overall_score": result['overall_score'],
+            "calibrated_base": result['calibrated_base'], 
+            "penalties_applied": result['penalties_applied'],
+            "score_explanation": calibrator.generate_score_explanation(result)
+        }
+        
+    except ImportError:
+        # Fallback to original calculation if new system isn't available
+        weights = {
+            'clarity': 0.2,
+            'persuasion': 0.25,
+            'emotion': 0.2,
+            'cta': 0.25,
+            'platform_fit': 0.1
+        }
+        
+        overall = (
+            clarity * weights['clarity'] +
+            persuasion * weights['persuasion'] +
+            emotion * weights['emotion'] +
+            cta * weights['cta'] +
+            platform_fit * weights['platform_fit']
+        )
+        
+        return {
+            "overall_score": round(overall, 1),
+            "score_explanation": "Basic scoring applied"
+        }
 
 def generate_feedback_simple(scores: AdScore) -> str:
     """Generate simplified human-readable feedback"""
@@ -456,6 +500,76 @@ async def parse_file_upload(file: UploadFile = File(...), platform: str = Form("
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"File processing failed: {str(e)}")
+
+class ImproveAdRequest(BaseModel):
+    """Request model for ad improvement endpoint"""
+    headline: str
+    body_text: str
+    cta: str
+    platform: str = "facebook"
+    target_audience: Optional[str] = None
+    industry: Optional[str] = None
+    current_overall_score: Optional[float] = None
+    analysis_id: Optional[str] = None
+
+@app.post("/api/ads/improve")
+async def improve_ad_copy_endpoint(request: ImproveAdRequest):
+    """Generate improved ad variations with predicted scores"""
+    try:
+        # Import the improvement service
+        from app.services.ad_improvement_service import improve_ad_copy
+        
+        # Prepare original ad data
+        original_ad = {
+            "headline": request.headline,
+            "body_text": request.body_text, 
+            "cta": request.cta,
+            "platform": request.platform,
+            "target_audience": request.target_audience,
+            "industry": request.industry
+        }
+        
+        # Mock current scores if not provided
+        if request.current_overall_score:
+            current_scores = {
+                "overall_score": request.current_overall_score,
+                "clarity_score": request.current_overall_score + 5,
+                "persuasion_score": request.current_overall_score - 5,
+                "emotion_score": request.current_overall_score,
+                "cta_strength": request.current_overall_score - 3,
+                "platform_fit_score": request.current_overall_score + 2
+            }
+        else:
+            # If no current score, assume it needs improvement
+            current_scores = {
+                "overall_score": 55.0,
+                "clarity_score": 60.0,
+                "persuasion_score": 50.0,
+                "emotion_score": 45.0,
+                "cta_strength": 50.0,
+                "platform_fit_score": 65.0
+            }
+        
+        # Generate improvements
+        improvements = await improve_ad_copy(original_ad, current_scores)
+        
+        return {
+            "success": True,
+            "original_ad": original_ad,
+            "original_score": current_scores["overall_score"],
+            "improvements": improvements,
+            "improvement_count": len(improvements)
+        }
+        
+    except ImportError:
+        # Fallback if service not available
+        return {
+            "success": False,
+            "error": "Improvement service temporarily unavailable",
+            "improvements": []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Improvement generation failed: {str(e)}")
 
 @app.post("/api/ads/generate", response_model=ParsedAdsResponse)
 async def generate_ad_copy(request: GenerateRequest):
