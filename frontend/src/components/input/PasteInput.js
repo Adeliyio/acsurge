@@ -81,7 +81,7 @@ const PasteInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'facebook' })
       try {
         // Add timeout to prevent hanging
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Backend parsing timeout')), 5000); // 5 second timeout
+          setTimeout(() => reject(new Error('Backend parsing timeout')), 15000); // 15 second timeout
         });
         
         const parsePromise = apiService.parsePastedCopy(pastedText, platform);
