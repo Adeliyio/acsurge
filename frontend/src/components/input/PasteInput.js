@@ -95,11 +95,13 @@ const PasteInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'facebook' })
         }
       } catch (backendError) {
         console.warn('Backend parsing failed, using client-side fallback:', backendError);
-        toast.info('Using offline parsing mode...');
+        toast('Using offline parsing mode...', { icon: 'ℹ️' });
       }
       
       // Fallback to client-side parsing
+      console.log('🔧 Attempting client-side parsing...');
       const results = parseClientSide(pastedText);
+      console.log('📊 Client-side parsing results:', results);
       
       if (results.ads && results.ads.length > 0) {
         setParseResults(results);
