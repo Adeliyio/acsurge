@@ -77,9 +77,15 @@ const PasteInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'facebook' })
 
     setParsing(true);
     try {
-      // Try backend parsing first
+      // Try backend parsing first with timeout
       try {
-        const results = await apiService.parsePastedCopy(pastedText, platform);
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Backend parsing timeout')), 5000); // 5 second timeout
+        });
+        
+        const parsePromise = apiService.parsePastedCopy(pastedText, platform);
+        const results = await Promise.race([parsePromise, timeoutPromise]);
         
         if (results.ads && results.ads.length > 0) {
           setParseResults(results);
@@ -89,6 +95,7 @@ const PasteInput = ({ onAdCopiesParsed, onClear, defaultPlatform = 'facebook' })
         }
       } catch (backendError) {
         console.warn('Backend parsing failed, using client-side fallback:', backendError);
+        toast.info('Using offline parsing mode...');
       }
       
       // Fallback to client-side parsing
